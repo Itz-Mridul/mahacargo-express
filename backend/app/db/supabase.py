@@ -451,6 +451,10 @@ async def create_parcel(data: Dict, _bypass_blackout=False) -> Dict:
     merged = {**data, **created}
     _set_fast_cache(f"parcel_{created['id']}", merged, ttl_sec=3600.0)
     _set_fast_cache(f"parcel_track_{created['tracking_id']}", merged, ttl_sec=3600.0)
+    all_p = _get_fast_cache("get_all_parcels") or list(DEFAULT_PARCELS)
+    all_p = [merged] + [p for p in all_p if p.get("id") != created["id"]]
+    _set_fast_cache("get_all_parcels", all_p, ttl_sec=3600.0)
+    manager.update_cache("get_all_parcels", all_p)
     return merged
 
 
@@ -490,64 +494,94 @@ async def get_parcel_by_tracking(tracking_id: str) -> Optional[Dict]:
         return None
 
 
+DEFAULT_PARCELS: List[Dict] = [
+    {
+        "id": "p-001",
+        "tracking_id": "SBP-20260830-AG01",
+        "customer_name": "Ramesh Shinde (Farmer)",
+        "pickup_stop_id": "kopargaon_bs",
+        "destination_stop_id": "shirdi",
+        "weight_kg": 18.5,
+        "volume_m3": 0.08,
+        "priority": "urgent_perishable",
+        "consignment_type": "agri_produce",
+        "commodity": "onions",
+        "perishability": "high",
+        "status": "in_transit",
+        "assigned_bus_id": "b-101",
+        "otp_code": "482910",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    },
+    {
+        "id": "p-002",
+        "tracking_id": "SBP-20260830-AG02",
+        "customer_name": "Kisan Sahakari Sangh",
+        "pickup_stop_id": "kopargaon_bs",
+        "destination_stop_id": "sangamner",
+        "weight_kg": 25.0,
+        "volume_m3": 0.12,
+        "priority": "standard",
+        "consignment_type": "agri_produce",
+        "commodity": "pomegranate",
+        "perishability": "medium",
+        "status": "assigned",
+        "assigned_bus_id": "b-104",
+        "otp_code": "591823",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    },
+    {
+        "id": "p-003",
+        "tracking_id": "SBP-20260830-MED3",
+        "customer_name": "Anjali Kulkarni (Medical Clinic)",
+        "pickup_stop_id": "kopargaon_north",
+        "destination_stop_id": "shirdi",
+        "weight_kg": 4.2,
+        "volume_m3": 0.02,
+        "priority": "express",
+        "consignment_type": "citizen_parcel",
+        "commodity": "general",
+        "perishability": "low",
+        "status": "in_transit",
+        "assigned_bus_id": "b-103",
+        "otp_code": "194820",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    },
+    {
+        "id": "p-004",
+        "tracking_id": "SBP-20260830-RET4",
+        "customer_name": "Vijay Patil (Retailer)",
+        "pickup_stop_id": "kopargaon_bs",
+        "destination_stop_id": "yeola",
+        "weight_kg": 12.0,
+        "volume_m3": 0.05,
+        "priority": "standard",
+        "consignment_type": "citizen_parcel",
+        "commodity": "general",
+        "perishability": "low",
+        "status": "pending",
+        "assigned_bus_id": None,
+        "otp_code": "382910",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    },
+]
+
+
 async def seed_demo_parcels_if_empty() -> List[Dict]:
-    db = get_db()
-    demo_parcels = [
-        {
-            "customer_name": "Ramesh Shinde (Farmer)",
-            "pickup_stop_id": "kopargaon_bs",
-            "destination_stop_id": "shirdi",
-            "weight_kg": 18.5,
-            "volume_m3": 0.08,
-            "priority": "standard",
-            "assigned_bus_id": "b-101",
-            "status": "in_transit"
-        },
-        {
-            "customer_name": "Kisan Sahakari Sangh",
-            "pickup_stop_id": "kopargaon_bs",
-            "destination_stop_id": "sangamner",
-            "weight_kg": 25.0,
-            "volume_m3": 0.12,
-            "priority": "standard",
-            "assigned_bus_id": "b-104",
-            "status": "assigned"
-        },
-        {
-            "customer_name": "Anjali Kulkarni (Medical Clinic)",
-            "pickup_stop_id": "kopargaon_north",
-            "destination_stop_id": "shirdi",
-            "weight_kg": 4.2,
-            "volume_m3": 0.02,
-            "priority": "express",
-            "assigned_bus_id": "b-106",
-            "status": "in_transit"
-        },
-        {
-            "customer_name": "Vijay Patil (Retailer)",
-            "pickup_stop_id": "kopargaon_bs",
-            "destination_stop_id": "yeola",
-            "weight_kg": 12.0,
-            "volume_m3": 0.05,
-            "priority": "standard",
-            "status": "pending"
-        }
-    ]
-    created_list = []
-    for p in demo_parcels:
-        try:
-            created = await create_parcel(p, _bypass_blackout=True)
-            created_list.append(created)
-        except Exception:
-            pass
-    return created_list
+    for p in DEFAULT_PARCELS:
+        _set_fast_cache(f"parcel_{p['id']}", p, ttl_sec=3600.0)
+        _set_fast_cache(f"parcel_track_{p['tracking_id']}", p, ttl_sec=3600.0)
+    return list(DEFAULT_PARCELS)
 
 
 async def get_all_parcels() -> List[Dict]:
     if manager.is_active:
-        return manager.get_cache("get_all_parcels") or []
-    cached = _get_fast_cache("get_all_parcels", ttl_sec=3.0)
-    if cached is not None:
+        return manager.get_cache("get_all_parcels") or list(DEFAULT_PARCELS)
+    cached = _get_fast_cache("get_all_parcels", ttl_sec=5.0)
+    if cached and len(cached) > 0:
         return cached
     try:
         db = get_db()
@@ -557,9 +591,9 @@ async def get_all_parcels() -> List[Dict]:
             parcels = await seed_demo_parcels_if_empty()
     except Exception as e:
         print(f"[Supabase] Warning: get_all_parcels fallback ({e})")
-        parcels = []
+        parcels = await seed_demo_parcels_if_empty()
     manager.update_cache("get_all_parcels", parcels)
-    _set_fast_cache("get_all_parcels", parcels, ttl_sec=3.0)
+    _set_fast_cache("get_all_parcels", parcels, ttl_sec=5.0)
     return parcels
 
 

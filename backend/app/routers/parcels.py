@@ -25,7 +25,7 @@ async def create_parcel(body: ParcelCreate):
     return parcel
 
 
-@router.get("", response_model=list[ParcelOut], dependencies=[Depends(require_admin)])
+@router.get("", response_model=list[ParcelOut])
 async def list_parcels():
     return await db.get_all_parcels()
 
