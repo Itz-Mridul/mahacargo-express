@@ -1,16 +1,42 @@
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { assignParcel } from '../services/api'
+import { assignParcel, createParcel } from '../services/api'
 import { useAppStore } from '../store/appStore'
 import { ScoreBreakdown, StatusBadge, Button, EmptyState } from '../components/UI'
 import toast from 'react-hot-toast'
 
 export default function SmartMatch() {
   const navigate = useNavigate()
-  const { bookingResult, setActiveAssignment } = useAppStore()
+  const { bookingResult, setBookingResult, setActiveAssignment } = useAppStore()
 
   const assignMutation = useMutation({
-    mutationFn: ({ parcelId, busId }) => assignParcel({ parcel_id: parcelId, bus_id: busId }),
+    mutationFn: async ({ parcelId, busId }) => {
+      let finalParcelId = parcelId
+
+      // If the parcel was created offline (fallback ID like "p-1234567"), re-create it server-side
+      if (parcelId.startsWith('p-') || !parcelId.includes('-') || parcelId.length < 10) {
+        try {
+          const parcelData = bookingResult?.parcel || {}
+          const freshParcel = await createParcel({
+            customer_name: parcelData.customer_name || 'MahaCargo Sender',
+            pickup_stop_id: parcelData.pickup_stop_id,
+            destination_stop_id: parcelData.destination_stop_id,
+            weight_kg: parseFloat(parcelData.weight_kg || 1),
+            priority: parcelData.priority || 'standard',
+            consignment_type: parcelData.consignment_type || 'citizen_parcel',
+            commodity: parcelData.commodity || 'general',
+            perishability: parcelData.perishability || 'low',
+          })
+          finalParcelId = freshParcel.id
+          // Update bookingResult with fresh parcel so tracking nav works
+          setBookingResult({ ...bookingResult, parcel: freshParcel })
+        } catch (err) {
+          console.warn('Parcel re-creation failed, continuing with original ID:', err)
+        }
+      }
+
+      return assignParcel({ parcel_id: finalParcelId, bus_id: busId })
+    },
     onSuccess: (data) => {
       setActiveAssignment(data)
       toast.success('✅ Booking confirmed!')
@@ -21,6 +47,7 @@ export default function SmartMatch() {
       toast.error(msg)
     },
   })
+
 
   if (!bookingResult) {
     return (

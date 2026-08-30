@@ -421,6 +421,7 @@ async def create_parcel(data: Dict, _bypass_blackout=False) -> Dict:
     valid_db_keys = {
         "id", "tracking_id", "customer_name", "pickup_stop_id", "destination_stop_id",
         "weight_kg", "volume_m3", "priority", "status", "assigned_bus_id",
+        "consignment_type", "commodity", "perishability",
         "created_at", "updated_at"
     }
     db_payload = {
@@ -431,9 +432,13 @@ async def create_parcel(data: Dict, _bypass_blackout=False) -> Dict:
         "updated_at": datetime.now(timezone.utc).isoformat(),
         **{k: v for k, v in data.items() if k in valid_db_keys}
     }
+    merged = {**data, **db_payload}
     if manager.is_active and not _bypass_blackout:
         manager.enqueue_write("create_parcel", data)
-        return {**data, **db_payload}
+        # Still cache in memory so assign/track can find it
+        _set_fast_cache(f"parcel_{db_payload['id']}", merged, ttl_sec=3600.0)
+        _set_fast_cache(f"parcel_track_{tracking_id}", merged, ttl_sec=3600.0)
+        return merged
     try:
         db = get_db()
         res = db.table("parcels").insert(db_payload).execute()
@@ -443,9 +448,10 @@ async def create_parcel(data: Dict, _bypass_blackout=False) -> Dict:
         created = db_payload
 
     # Cache created parcel in memory
-    _set_fast_cache(f"parcel_{created['id']}", {**data, **created}, ttl_sec=3600.0)
-    _set_fast_cache(f"parcel_track_{created['tracking_id']}", {**data, **created}, ttl_sec=3600.0)
-    return {**data, **created}
+    merged = {**data, **created}
+    _set_fast_cache(f"parcel_{created['id']}", merged, ttl_sec=3600.0)
+    _set_fast_cache(f"parcel_track_{created['tracking_id']}", merged, ttl_sec=3600.0)
+    return merged
 
 
 async def get_parcel_by_id(parcel_id: str) -> Optional[Dict]:
