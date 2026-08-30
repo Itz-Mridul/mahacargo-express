@@ -139,10 +139,18 @@ export default function VerificationAudit() {
       }
     },
     onSuccess: (_, variables) => {
-      toast.success(`Handshake updated to ${variables.status.toUpperCase()}!`)
+      toast.success(`Handshake updated to ${variables.status.toUpperCase().replace('_', ' ')}!`)
       if (currentParcel) currentParcel.status = variables.status
+      if (activeAssignment?.parcel?.id === currentParcelId) {
+        setActiveAssignment({ ...activeAssignment, parcel: { ...activeAssignment.parcel, status: variables.status } })
+      }
+      if (bookingResult?.parcel?.id === currentParcelId) {
+        setBookingResult({ ...bookingResult, parcel: { ...bookingResult.parcel, status: variables.status } })
+      }
       queryClient.invalidateQueries({ queryKey: ['chain', currentParcelId] })
+      queryClient.invalidateQueries({ queryKey: ['tracking', currentParcelId] })
       queryClient.invalidateQueries({ queryKey: ['parcels-admin'] })
+      queryClient.invalidateQueries({ queryKey: ['all-parcels-track'] })
     },
   })
 
@@ -170,9 +178,17 @@ export default function VerificationAudit() {
     onSuccess: (res) => {
       setCertificateData(res)
       if (currentParcel) currentParcel.status = 'delivered'
-      toast.success('🎉 Delivery successfully verified & cryptographic certificate generated!')
+      if (activeAssignment?.parcel?.id === currentParcelId) {
+        setActiveAssignment({ ...activeAssignment, parcel: { ...activeAssignment.parcel, status: 'delivered' } })
+      }
+      if (bookingResult?.parcel?.id === currentParcelId) {
+        setBookingResult({ ...bookingResult, parcel: { ...bookingResult.parcel, status: 'delivered' } })
+      }
+      toast.success('🎉 Delivery verified! SHA-256 Certificate generated & synced across all portals.')
       queryClient.invalidateQueries({ queryKey: ['chain', currentParcelId] })
+      queryClient.invalidateQueries({ queryKey: ['tracking', currentParcelId] })
       queryClient.invalidateQueries({ queryKey: ['parcels-admin'] })
+      queryClient.invalidateQueries({ queryKey: ['all-parcels-track'] })
     },
     onError: (err) => {
       toast.error(err?.response?.data?.detail || 'Verification failed. Check OTP code.')
