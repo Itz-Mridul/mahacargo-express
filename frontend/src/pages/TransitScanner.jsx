@@ -24,8 +24,22 @@ export default function TransitScanner() {
 
   const triggerFetch = async (idToFetch) => {
     setIsScanning(true)
+    
+    // SMART EXTRACTION: Handle full URLs or specific prefixes from various QR codes
+    let cleanId = idToFetch.trim()
     try {
-      const res = await fetch(`${API}/api/parcels/${idToFetch.toUpperCase().trim()}`)
+      const url = new URL(cleanId)
+      if (url.searchParams.has('tracking_id')) {
+        cleanId = url.searchParams.get('tracking_id')
+      }
+    } catch (e) {
+      if (cleanId.startsWith('KOPARGAON-MOBILITY-')) {
+        cleanId = cleanId.replace('KOPARGAON-MOBILITY-', '')
+      }
+    }
+    
+    try {
+      const res = await fetch(`${API}/api/parcels/${cleanId.toUpperCase()}`)
       if (!res.ok) throw new Error('Parcel not found')
       const data = await res.json()
       
