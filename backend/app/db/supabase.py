@@ -5,6 +5,7 @@ Uses service-role key for backend operations.
 from __future__ import annotations
 import asyncio
 import json
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
@@ -347,13 +348,16 @@ async def update_bus_position(bus_id: str, lat: float, lng: float, stop_index: i
     if manager.is_active and not _bypass_blackout:
         manager.enqueue_write("update_bus_position", {"bus_id": bus_id, "lat": lat, "lng": lng, "stop_index": stop_index})
         return
-    db = get_db()
-    db.table("buses").update({
-        "current_lat": lat,
-        "current_lng": lng,
-        "current_stop_index": stop_index,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }).eq("id", bus_id).execute()
+    try:
+        db = get_db()
+        db.table("buses").update({
+            "current_lat": lat,
+            "current_lng": lng,
+            "current_stop_index": stop_index,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", bus_id).execute()
+    except Exception as e:
+        print(f"[Supabase] Warning: update_bus_position fallback ({e})")
 
 
 async def decrement_bus_capacity(bus_id: str, weight_kg: float, _bypass_blackout=False) -> Dict:
@@ -361,30 +365,37 @@ async def decrement_bus_capacity(bus_id: str, weight_kg: float, _bypass_blackout
     if manager.is_active and not _bypass_blackout:
         manager.enqueue_write("decrement_bus_capacity", {"bus_id": bus_id, "weight_kg": weight_kg})
         return {}
-    db = get_db()
-    res = db.table("buses").select("available_capacity_kg, total_capacity_kg").eq("id", bus_id).single().execute()
-    current = res.data.get("available_capacity_kg", 0.0)
-    new_cap = max(0.0, round(current - weight_kg, 3))
-    update_res = db.table("buses").update({
-        "available_capacity_kg": new_cap,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }).eq("id", bus_id).execute()
-    return update_res.data[0] if update_res.data else {}
+    try:
+        db = get_db()
+        res = db.table("buses").select("available_capacity_kg, total_capacity_kg").eq("id", bus_id).single().execute()
+        current = res.data.get("available_capacity_kg", 0.0)
+        new_cap = max(0.0, round(current - weight_kg, 3))
+        update_res = db.table("buses").update({
+            "available_capacity_kg": new_cap,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", bus_id).execute()
+        return update_res.data[0] if update_res.data else {}
+    except Exception as e:
+        print(f"[Supabase] Warning: decrement_bus_capacity fallback ({e})")
+        return {}
 
 
 async def restore_bus_capacity(bus_id: str, weight_kg: float, _bypass_blackout=False) -> None:
     if manager.is_active and not _bypass_blackout:
         manager.enqueue_write("restore_bus_capacity", {"bus_id": bus_id, "weight_kg": weight_kg})
         return
-    db = get_db()
-    res = db.table("buses").select("available_capacity_kg, total_capacity_kg").eq("id", bus_id).single().execute()
-    current = res.data.get("available_capacity_kg", 0.0)
-    total = res.data.get("total_capacity_kg", current)
-    new_cap = min(total, round(current + weight_kg, 3))
-    db.table("buses").update({
-        "available_capacity_kg": new_cap,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }).eq("id", bus_id).execute()
+    try:
+        db = get_db()
+        res = db.table("buses").select("available_capacity_kg, total_capacity_kg").eq("id", bus_id).single().execute()
+        current = res.data.get("available_capacity_kg", 0.0)
+        total = res.data.get("total_capacity_kg", current)
+        new_cap = min(total, round(current + weight_kg, 3))
+        db.table("buses").update({
+            "available_capacity_kg": new_cap,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", bus_id).execute()
+    except Exception as e:
+        print(f"[Supabase] Warning: restore_bus_capacity fallback ({e})")
 
 
 async def reset_all_buses(_bypass_blackout=False) -> None:
@@ -532,11 +543,15 @@ async def get_all_parcels() -> List[Dict]:
     cached = _get_fast_cache("get_all_parcels", ttl_sec=3.0)
     if cached is not None:
         return cached
-    db = get_db()
-    res = db.table("parcels").select("*").order("created_at", desc=True).execute()
-    parcels = res.data or []
-    if len(parcels) == 0:
-        parcels = await seed_demo_parcels_if_empty()
+    try:
+        db = get_db()
+        res = db.table("parcels").select("*").order("created_at", desc=True).execute()
+        parcels = res.data or []
+        if len(parcels) == 0:
+            parcels = await seed_demo_parcels_if_empty()
+    except Exception as e:
+        print(f"[Supabase] Warning: get_all_parcels fallback ({e})")
+        parcels = []
     manager.update_cache("get_all_parcels", parcels)
     _set_fast_cache("get_all_parcels", parcels, ttl_sec=3.0)
     return parcels
@@ -545,17 +560,28 @@ async def get_all_parcels() -> List[Dict]:
 async def update_parcel_status(parcel_id: str, status: str, bus_id: Optional[str] = None, _bypass_blackout=False) -> None:
     invalidate_fast_cache("get_all_parcels")
     invalidate_fast_cache("get_dashboard_metrics")
+    # Also update in-memory cache
+    for cache_key in [f"parcel_{parcel_id}"]:
+        cached = _get_fast_cache(cache_key)
+        if cached:
+            cached["status"] = status
+            if bus_id:
+                cached["assigned_bus_id"] = bus_id
+            _set_fast_cache(cache_key, cached, ttl_sec=3600.0)
     if manager.is_active and not _bypass_blackout:
         manager.enqueue_write("update_parcel_status", {"parcel_id": parcel_id, "status": status, "bus_id": bus_id})
         return
-    db = get_db()
-    payload: Dict[str, Any] = {
-        "status": status,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }
-    if bus_id is not None:
-        payload["assigned_bus_id"] = bus_id
-    db.table("parcels").update(payload).eq("id", parcel_id).execute()
+    try:
+        db = get_db()
+        payload: Dict[str, Any] = {
+            "status": status,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if bus_id is not None:
+            payload["assigned_bus_id"] = bus_id
+        db.table("parcels").update(payload).eq("id", parcel_id).execute()
+    except Exception as e:
+        print(f"[Supabase] Warning: update_parcel_status fallback ({e})")
 
 
 async def reset_all_parcels(_bypass_blackout=False) -> None:
@@ -585,22 +611,36 @@ async def create_assignment(data: Dict, _bypass_blackout=False) -> Dict:
     }
     if manager.is_active and not _bypass_blackout:
         manager.enqueue_write("create_assignment", data)
+        _set_fast_cache(f"assignment_{payload.get('parcel_id')}", payload, ttl_sec=3600.0)
         return payload
-    db = get_db()
-    res = db.table("assignments").insert(payload).execute()
-    return res.data[0]
+    try:
+        db = get_db()
+        res = db.table("assignments").insert(payload).execute()
+        result = res.data[0] if res.data else payload
+    except Exception as e:
+        print(f"[Supabase] Warning: create_assignment fallback ({e})")
+        result = payload
+    _set_fast_cache(f"assignment_{result.get('parcel_id')}", result, ttl_sec=3600.0)
+    return result
 
 
 async def get_assignment_by_parcel(parcel_id: str) -> Optional[Dict]:
+    cached = _get_fast_cache(f"assignment_{parcel_id}")
+    if cached:
+        return cached
     if manager.is_active:
         assignments = manager.get_cache("get_all_assignments") or []
         for a in assignments:
             if a["parcel_id"] == parcel_id:
                 return a
         return None
-    db = get_db()
-    res = db.table("assignments").select("*").eq("parcel_id", parcel_id).order("created_at", desc=True).limit(1).execute()
-    return res.data[0] if res.data else None
+    try:
+        db = get_db()
+        res = db.table("assignments").select("*").eq("parcel_id", parcel_id).order("created_at", desc=True).limit(1).execute()
+        return res.data[0] if res.data else None
+    except Exception as e:
+        print(f"[Supabase] Warning: get_assignment_by_parcel fallback ({e})")
+        return None
 
 
 async def get_all_assignments() -> List[Dict]:
@@ -609,9 +649,13 @@ async def get_all_assignments() -> List[Dict]:
     cached = _get_fast_cache("get_all_assignments", ttl_sec=4.0)
     if cached is not None:
         return cached
-    db = get_db()
-    res = db.table("assignments").select("*").order("created_at", desc=True).execute()
-    assignments = res.data or []
+    try:
+        db = get_db()
+        res = db.table("assignments").select("*").order("created_at", desc=True).execute()
+        assignments = res.data or []
+    except Exception as e:
+        print(f"[Supabase] Warning: get_all_assignments fallback ({e})")
+        assignments = []
     manager.update_cache("get_all_assignments", assignments)
     _set_fast_cache("get_all_assignments", assignments, ttl_sec=4.0)
     return assignments
