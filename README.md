@@ -208,5 +208,42 @@ project-cargo-2/
 
 ---
 
+## 🌍 Roles & Workflow (How it Works)
+
+1. **Citizens & Farmers (The Senders)**: Log in, enter parcel details, and get matched with an active MSRTC bus via the SmartMatch Engine. They receive a **Digital Waybill (QR Code)**.
+2. **Admin / Conductor (The Transporters)**: At the bus depot, the conductor scans the QR code using the **Scanner Portal**. The system deducts the parcel's weight from the bus's capacity and updates the status to `in_transit`.
+3. **Receiver (The Destination)**: The receiver provides a secure OTP and a digital signature on the **Audit & PoD** portal to complete the cryptographic Chain of Custody.
+
+---
+
+## 📈 Scaling Strategy (Handling Massive Live Traffic)
+
+If MahaCargo Express scales to millions of users across the state:
+- **Database Scaling:** Implement `PgBouncer` for connection pooling, read replicas for heavy analytics, and table partitioning (e.g., by region) to maintain low query times.
+- **Backend & API:** Horizontally scale FastAPI pods on Kubernetes (K8s). Introduce **Redis** to cache bus routes and active fleet capacities. Break the monolith into microservices (Matching, Telemetry, Auth).
+- **High Throughput Telemetry:** Use **Apache Kafka** or RabbitMQ to ingest high-velocity GPS pings from thousands of buses, batch-writing them to Supabase to prevent DB bottlenecks.
+- **Edge & Frontend:** PWA integration via Vercel to ensure offline capabilities and instant loading on 2G rural networks.
+
+---
+
+## 🎤 Hackathon Interviewer Questions (Defending the MVP)
+
+**Q1: How do you ensure the bus conductor or driver doesn't steal or lose the parcel?**
+*Answer:* We implemented a strict **Chain of Custody**. When the conductor scans the QR to load the parcel, it is cryptographically linked to their ID and that specific bus. To mark it delivered, the receiver must provide a secure OTP and a digital signature. Without both, the conductor remains liable for the parcel on the system.
+
+**Q2: What happens if the internet connection drops in rural areas during a scan or booking?**
+*Answer:* The MVP uses `Zustand` with `persist` middleware to cache state locally. If a user tries to book or scan while offline, the app caches the action and syncs with the FastAPI backend automatically once the connection is restored.
+
+**Q3: How does the matching engine handle dynamic capacity? What if a bus is full?**
+*Answer:* The system tracks `total_capacity_kg` and `available_capacity_kg` in real-time. When an Admin scans a parcel for loading, the API deducts the parcel's weight from the bus. If the capacity drops below the required weight, the matching algorithm automatically filters out that bus for future bookings.
+
+**Q4: Is it safe to transport random parcels on public passenger buses?**
+*Answer:* Security is paramount. In a production environment, the system integrates with existing state transport security protocols. Senders must undergo KYC verification. We also built a "Misinfo Shield" portal for admins to audit suspicious tracking claims and maintain network integrity.
+
+**Q5: Why React and FastAPI? Why not a full Next.js full-stack app?**
+*Answer:* We decoupled the frontend (React) and backend (FastAPI) to allow for independent scaling. Python (FastAPI) was chosen because it allows us to easily integrate Machine Learning models in the future (for predictive ETA, route optimization, and dynamic pricing). React allows us to deploy the app as a lightweight Progressive Web App (PWA) for mobile users.
+
+---
+
 ## 📄 License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
