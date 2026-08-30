@@ -35,6 +35,9 @@ export default function App() {
               <Route path="/optimizer" element={<NetworkOptimizer />} />
               <Route path="/verify" element={<VerificationAudit />} />
               <Route path="/misinfo" element={<MisinfoPortal />} />
+              <Route path="/track" element={<Tracking />} />
+              <Route path="/track/:parcelId" element={<Tracking />} />
+              <Route path="/tracking" element={<Tracking />} />
               <Route path="/tracking/:parcelId" element={<Tracking />} />
               <Route path="/dashboard" element={<Dashboard />} />
             </Routes>

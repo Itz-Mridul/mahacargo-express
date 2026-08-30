@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchTracking } from '../services/api'
+import { fetchTracking, fetchAllParcels } from '../services/api'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { StatusBadge, Skeleton, ErrorState, DemoBadge } from '../components/UI'
 import { MapContainer, TileLayer, Polyline, Marker, Popup, CircleMarker, Tooltip } from 'react-leaflet'
@@ -23,17 +23,27 @@ const BUS_ICON = L.divIcon({
 })
 
 export default function Tracking() {
-  const { parcelId } = useParams()
+  const { parcelId: routeParcelId } = useParams()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [busPosition, setBusPosition] = useState(null)
   const [parcelStatus, setParcelStatus] = useState(null)
   const [wsConnected, setWsConnected] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(null)
 
+  const { data: allParcels } = useQuery({
+    queryKey: ['all-parcels-track'],
+    queryFn: fetchAllParcels,
+    staleTime: 30000,
+  })
+
+  const activeParcelId = routeParcelId || (allParcels && allParcels.length > 0 ? (allParcels.find(p => p.status === 'in_transit')?.id || allParcels[0].id) : null)
+
   const { data: tracking, isLoading, isError } = useQuery({
-    queryKey: ['tracking', parcelId],
-    queryFn: () => fetchTracking(parcelId),
-    refetchInterval: 30000,
+    queryKey: ['tracking', activeParcelId],
+    queryFn: () => fetchTracking(activeParcelId),
+    enabled: !!activeParcelId,
+    refetchInterval: 10000,
   })
 
   const parcel = tracking?.parcel
@@ -62,11 +72,11 @@ export default function Tracking() {
     }
     if (msg.type === 'status') {
       setParcelStatus(msg.parcel_status)
-      queryClient.invalidateQueries({ queryKey: ['tracking', parcelId] })
+      queryClient.invalidateQueries({ queryKey: ['tracking', activeParcelId] })
     }
-  }, [parcelId, queryClient])
+  }, [activeParcelId, queryClient])
 
-  useWebSocket(parcelId, onWsMessage)
+  useWebSocket(activeParcelId, onWsMessage)
 
   const currentStopIndex = busPosition?.stopIndex ?? bus?.current_stop_index ?? 0
   const pickupStopId = parcel?.pickup_stop_id
@@ -87,17 +97,37 @@ export default function Tracking() {
     <div className="max-w-6xl mx-auto px-6 py-8">
       <div className="mb-6 flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold font-['Space_Grotesk']">Live Tracking</h1>
-          <p className="text-gray-400 text-sm">
-            {parcel?.tracking_id} · Bus {bus?.bus_number || '—'}
-          </p>
+          <h1 className="text-2xl font-bold font-['Space_Grotesk']">Live Telemetry & GPS Tracking</h1>
+          <div className="flex items-center gap-3 mt-1 flex-wrap">
+            <span className="text-gray-400 text-xs font-mono">
+              {parcel?.tracking_id} · Bus {bus?.bus_number || '—'}
+            </span>
+            {allParcels && allParcels.length > 0 && (
+              <select
+                value={activeParcelId || ''}
+                onChange={(e) => navigate(`/track/${e.target.value}`)}
+                aria-label="Select Consignment to Track"
+                className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-indigo-300 font-medium focus:outline-none focus:border-indigo-500 cursor-pointer"
+              >
+                {allParcels.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-slate-900 text-white">
+                    {p.customer_name} ({p.tracking_id}) · {p.weight_kg}kg · {p.status}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <DemoBadge />
           <StatusBadge status={parcelStatus || parcel?.status} />
-          {!wsConnected && (
+          {!wsConnected ? (
             <span className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-full">
-              ⏳ Connecting...
+              ⏳ Connecting WebSocket...
+            </span>
+          ) : (
+            <span className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-full flex items-center gap-1 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live Telemetry Active
             </span>
           )}
         </div>
