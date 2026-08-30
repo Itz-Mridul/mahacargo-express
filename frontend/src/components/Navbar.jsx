@@ -379,7 +379,7 @@ export function Navbar() {
         style={{ background: 'rgba(10,14,26,0.92)', backdropFilter: 'blur(20px)' }}
       >
         <div className="w-full px-4">
-          <div className="flex items-center justify-between h-14 gap-2">
+          <div className="flex flex-wrap items-center justify-between py-2 gap-y-2 gap-x-2">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-cyan-500 to-emerald-400 flex items-center justify-center text-lg shadow-lg shadow-indigo-500/20">
@@ -394,7 +394,7 @@ export function Navbar() {
             </Link>
 
             {/* Nav links */}
-            <div className="hidden lg:flex items-center gap-0.5 flex-shrink-0">
+            <div className="flex items-center gap-1 flex-shrink-0 overflow-x-auto w-full lg:w-auto order-last lg:order-none pb-1 lg:pb-0 hide-scrollbar">
               {navLinks.map((link) => {
                 const isActive = location.pathname === link.to
                 return (
