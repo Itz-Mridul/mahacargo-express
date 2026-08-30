@@ -210,9 +210,74 @@ project-cargo-2/
 
 ## 🌍 Roles & Workflow (How it Works)
 
-1. **Citizens & Farmers (The Senders)**: Log in, enter parcel details, and get matched with an active MSRTC bus via the SmartMatch Engine. They receive a **Digital Waybill (QR Code)**.
-2. **Admin / Conductor (The Transporters)**: At the bus depot, the conductor scans the QR code using the **Scanner Portal**. The system deducts the parcel's weight from the bus's capacity and updates the status to `in_transit`.
-3. **Receiver (The Destination)**: The receiver provides a secure OTP and a digital signature on the **Audit & PoD** portal to complete the cryptographic Chain of Custody.
+### Step 1: The Booking & Match Engine Flow (Citizens & Farmers)
+```mermaid
+sequenceDiagram
+    actor Farmer
+    participant React UI
+    participant FastAPI Backend
+    participant Supabase DB
+    
+    Farmer->>React UI: Opens "Book Parcel" & Enters Route (20kg)
+    React UI->>FastAPI Backend: POST /api/parcels {weight, route}
+    FastAPI Backend->>Supabase DB: Query Active Buses on Route
+    Supabase DB-->>FastAPI Backend: Returns Bus MH-15-BT-101 (50kg free capacity)
+    FastAPI Backend-->>React UI: Returns Matched Bus
+    React UI-->>Farmer: Shows "Booking Confirmed" + Generates Digital Waybill (QR Code)
+```
+
+### Step 2: The Scanning & Loading Flow (Admins/Conductors)
+```mermaid
+sequenceDiagram
+    actor Conductor
+    participant Scanner Portal (React)
+    participant QR Decoder (html5-qrcode)
+    participant FastAPI Backend
+    participant Supabase DB
+    
+    Farmer->>Conductor: Shows Digital Waybill (QR)
+    Conductor->>Scanner Portal: Opens Camera
+    Scanner Portal->>QR Decoder: Captures Video Feed
+    QR Decoder-->>Scanner Portal: Extracts Tracking ID
+    Scanner Portal->>FastAPI Backend: POST /api/parcels/{id}/scan-load
+    FastAPI Backend->>Supabase DB: Deduct Weight & Update Status
+    FastAPI Backend-->>Scanner Portal: Success Response
+    Scanner Portal-->>Conductor: Shows Green Success Notification (Parcel Loaded)
+```
+
+### Step 3: The Live GPS Telemetry Flow
+```mermaid
+sequenceDiagram
+    participant FastAPI Telemetry Loop
+    participant WebSocket Connection
+    participant Tracking Center (React)
+    actor Receiver
+    
+    loop Every 5 Seconds (While Driving)
+        FastAPI Telemetry Loop->>WebSocket Connection: Broadcast {lat, lng, speed}
+        WebSocket Connection->>Tracking Center: Receives GPS Ping
+        Tracking Center->>Tracking Center: Leaflet Map Animates Bus Marker
+        Tracking Center-->>Receiver: Views Live Map & Updating ETA
+    end
+```
+
+### Step 4: Audit & Cryptographic Proof of Delivery (PoD)
+```mermaid
+sequenceDiagram
+    actor Receiver
+    participant React UI (Audit Portal)
+    participant FastAPI Backend
+    participant Supabase DB
+    
+    Receiver->>React UI: Enters 6-Digit Secret OTP & Digital Signature
+    React UI->>FastAPI Backend: POST /verify {otp, signature_data}
+    FastAPI Backend->>Supabase DB: Validate OTP against Database
+    Supabase DB-->>FastAPI Backend: OTP Matches!
+    FastAPI Backend->>FastAPI Backend: Generate SHA-256 Crypto Hash
+    FastAPI Backend->>Supabase DB: Update Status -> "delivered", Save Hash
+    FastAPI Backend-->>React UI: Returns Success & Certificate ID
+    React UI-->>Receiver: Displays "🎉 Delivery Verified!"
+```
 
 ---
 
