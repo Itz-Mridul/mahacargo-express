@@ -54,44 +54,107 @@ def invalidate_fast_cache(key: Optional[str] = None):
         _cache_expiry.clear()
 
 
+DEFAULT_ROUTES = [
+    {
+        "id": "r-001",
+        "route_name": "Kopargaon – Shirdi Express",
+        "stops": [
+            {"id": "kopargaon_bs", "name": "Kopargaon Bus Stand", "lat": 19.8898, "lng": 74.4773, "is_apmc_market": False},
+            {"id": "kopargaon_south", "name": "Kopargaon South Gate", "lat": 19.8845, "lng": 74.4801, "is_apmc_market": False},
+            {"id": "rahata", "name": "Rahata", "lat": 19.7168, "lng": 74.4765, "is_apmc_market": False},
+            {"id": "shirdi", "name": "Shirdi", "lat": 19.7651, "lng": 74.4773, "is_apmc_market": False}
+        ],
+        "distance_km": 24.5,
+        "estimated_duration_min": 42,
+        "polyline": None
+    },
+    {
+        "id": "r-002",
+        "route_name": "Kopargaon – Sangamner via Belapur",
+        "stops": [
+            {"id": "kopargaon_bs", "name": "Kopargaon Bus Stand", "lat": 19.8898, "lng": 74.4773, "is_apmc_market": False},
+            {"id": "niphad", "name": "Niphad", "lat": 20.0789, "lng": 74.1135, "is_apmc_market": False},
+            {"id": "belapur", "name": "Belapur (Nashik)", "lat": 19.9754, "lng": 74.2451, "is_apmc_market": False},
+            {"id": "sangamner", "name": "Sangamner", "lat": 19.5769, "lng": 74.2099, "is_apmc_market": False}
+        ],
+        "distance_km": 72.0,
+        "estimated_duration_min": 105,
+        "polyline": None
+    },
+    {
+        "id": "r-003",
+        "route_name": "Kopargaon – Ghoti Passerby",
+        "stops": [
+            {"id": "kopargaon_north", "name": "Kopargaon North", "lat": 19.9023, "lng": 74.4691, "is_apmc_market": False},
+            {"id": "kopargaon_bs", "name": "Kopargaon Bus Stand", "lat": 19.8898, "lng": 74.4773, "is_apmc_market": False},
+            {"id": "rahata", "name": "Rahata", "lat": 19.7168, "lng": 74.4765, "is_apmc_market": False},
+            {"id": "shirdi", "name": "Shirdi", "lat": 19.7651, "lng": 74.4773, "is_apmc_market": False},
+            {"id": "ghoti", "name": "Ghoti", "lat": 19.6421, "lng": 73.8976, "is_apmc_market": False}
+        ],
+        "distance_km": 95.0,
+        "estimated_duration_min": 150,
+        "polyline": None
+    },
+    {
+        "id": "r-004",
+        "route_name": "Shirdi – Sangamner Local",
+        "stops": [
+            {"id": "shirdi", "name": "Shirdi", "lat": 19.7651, "lng": 74.4773, "is_apmc_market": False},
+            {"id": "rahata", "name": "Rahata", "lat": 19.7168, "lng": 74.4765, "is_apmc_market": False},
+            {"id": "belapur", "name": "Belapur (Nashik)", "lat": 19.9754, "lng": 74.2451, "is_apmc_market": False},
+            {"id": "sangamner", "name": "Sangamner", "lat": 19.5769, "lng": 74.2099, "is_apmc_market": False}
+        ],
+        "distance_km": 55.0,
+        "estimated_duration_min": 85,
+        "polyline": None
+    },
+    {
+        "id": "r-005",
+        "route_name": "Kopargaon – Yeola via Niphad",
+        "stops": [
+            {"id": "kopargaon_bs", "name": "Kopargaon Bus Stand", "lat": 19.8898, "lng": 74.4773, "is_apmc_market": False},
+            {"id": "kopargaon_north", "name": "Kopargaon North", "lat": 19.9023, "lng": 74.4691, "is_apmc_market": False},
+            {"id": "niphad", "name": "Niphad", "lat": 20.0789, "lng": 74.1135, "is_apmc_market": False},
+            {"id": "yeola", "name": "Yeola", "lat": 20.0454, "lng": 74.4921, "is_apmc_market": False}
+        ],
+        "distance_km": 58.0,
+        "estimated_duration_min": 90,
+        "polyline": None
+    }
+]
+
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
 async def get_all_routes() -> List[Dict]:
     if manager.is_active:
-        return manager.get_cache("get_all_routes") or []
+        return manager.get_cache("get_all_routes") or DEFAULT_ROUTES
     cached = _get_fast_cache("get_all_routes", ttl_sec=300.0)
     if cached is not None:
         return cached
-    db = get_db()
-    res = db.table("routes").select("*").execute()
-    routes = res.data or []
-    for r in routes:
-        if isinstance(r.get("stops"), str):
-            r["stops"] = json.loads(r["stops"])
+    try:
+        db = get_db()
+        res = db.table("routes").select("*").execute()
+        routes = res.data or []
+        for r in routes:
+            if isinstance(r.get("stops"), str):
+                r["stops"] = json.loads(r["stops"])
+        if not routes:
+            routes = DEFAULT_ROUTES
+    except Exception as e:
+        print(f"[Supabase] Warning: Using default routes fallback ({e})")
+        routes = DEFAULT_ROUTES
+
     manager.update_cache("get_all_routes", routes)
     _set_fast_cache("get_all_routes", routes, ttl_sec=300.0)
     return routes
 
 
 async def get_route_by_id(route_id: str) -> Optional[Dict]:
-    if manager.is_active:
-        routes = manager.get_cache("get_all_routes") or []
-        for r in routes:
-            if r["id"] == route_id:
-                return r
-        return None
     routes = await get_all_routes()
     for r in routes:
         if r["id"] == route_id:
             return r
-    db = get_db()
-    res = db.table("routes").select("*").eq("id", route_id).single().execute()
-    if not res.data:
-        return None
-    r = res.data
-    if isinstance(r.get("stops"), str):
-        r["stops"] = json.loads(r["stops"])
-    return r
+    return None
 
 
 # ─── Buses ────────────────────────────────────────────────────────────────────
@@ -102,12 +165,16 @@ async def get_all_buses() -> List[Dict]:
     cached = _get_fast_cache("get_all_buses", ttl_sec=4.0)
     if cached is not None:
         return cached
-    db = get_db()
-    res = db.table("buses").select("*, routes(*)").execute()
-    buses = res.data or []
-    for b in buses:
-        if b.get("routes") and isinstance(b["routes"].get("stops"), str):
-            b["routes"]["stops"] = json.loads(b["routes"]["stops"])
+    try:
+        db = get_db()
+        res = db.table("buses").select("*, routes(*)").execute()
+        buses = res.data or []
+        for b in buses:
+            if b.get("routes") and isinstance(b["routes"].get("stops"), str):
+                b["routes"]["stops"] = json.loads(b["routes"]["stops"])
+    except Exception as e:
+        print(f"[Supabase] Warning: Fetching buses fallback ({e})")
+        buses = []
     manager.update_cache("get_all_buses", buses)
     _set_fast_cache("get_all_buses", buses, ttl_sec=4.0)
     return buses

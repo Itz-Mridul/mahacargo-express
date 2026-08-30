@@ -56,9 +56,20 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ─── Rate limiting ────────────────────────────────────────────────────────────
+from fastapi.responses import JSONResponse
+import traceback
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    error_str = traceback.format_exc()
+    print(f"[Unhandled Error] {request.url.path}: {error_str}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc), "path": request.url.path}
+    )
 
 # ─── CORS ─────────────────────────────────────────────────────────────────────
 app.add_middleware(
