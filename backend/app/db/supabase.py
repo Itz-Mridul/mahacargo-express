@@ -423,34 +423,54 @@ async def create_parcel(data: Dict, _bypass_blackout=False) -> Dict:
     if manager.is_active and not _bypass_blackout:
         manager.enqueue_write("create_parcel", data)
         return {**data, **db_payload}
-    db = get_db()
-    res = db.table("parcels").insert(db_payload).execute()
-    created = res.data[0]
+    try:
+        db = get_db()
+        res = db.table("parcels").insert(db_payload).execute()
+        created = res.data[0] if res.data else db_payload
+    except Exception as e:
+        print(f"[Supabase] Warning: DB insert parcel fallback ({e})")
+        created = db_payload
+
+    # Cache created parcel in memory
+    _set_fast_cache(f"parcel_{created['id']}", {**data, **created}, ttl_sec=3600.0)
+    _set_fast_cache(f"parcel_track_{created['tracking_id']}", {**data, **created}, ttl_sec=3600.0)
     return {**data, **created}
 
 
 async def get_parcel_by_id(parcel_id: str) -> Optional[Dict]:
+    cached = _get_fast_cache(f"parcel_{parcel_id}")
+    if cached:
+        return cached
     if manager.is_active:
         parcels = manager.get_cache("get_all_parcels") or []
         for p in parcels:
             if p["id"] == parcel_id:
                 return p
         return None
-    db = get_db()
-    res = db.table("parcels").select("*").eq("id", parcel_id).single().execute()
-    return res.data
+    try:
+        db = get_db()
+        res = db.table("parcels").select("*").eq("id", parcel_id).single().execute()
+        return res.data
+    except Exception:
+        return None
 
 
 async def get_parcel_by_tracking(tracking_id: str) -> Optional[Dict]:
+    cached = _get_fast_cache(f"parcel_track_{tracking_id}")
+    if cached:
+        return cached
     if manager.is_active:
         parcels = manager.get_cache("get_all_parcels") or []
         for p in parcels:
             if p["tracking_id"] == tracking_id:
                 return p
         return None
-    db = get_db()
-    res = db.table("parcels").select("*").eq("tracking_id", tracking_id).single().execute()
-    return res.data
+    try:
+        db = get_db()
+        res = db.table("parcels").select("*").eq("tracking_id", tracking_id).single().execute()
+        return res.data
+    except Exception:
+        return None
 
 
 async def seed_demo_parcels_if_empty() -> List[Dict]:
