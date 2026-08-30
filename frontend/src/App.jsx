@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import { Navbar } from './components/Navbar'
@@ -24,42 +24,48 @@ const queryClient = new QueryClient({
   },
 })
 
+// Layout with Navbar for authenticated pages
+function AppLayout() {
+  return (
+    <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
+      <Navbar />
+      <main>
+        <Outlet />
+      </main>
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          {/* ── Public Auth Pages (no Navbar) ── */}
-          <Route path="/login"  element={<Login />} />
+          {/* Public Auth Pages */}
+          <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
-          {/* ── Protected App (with Navbar) ── */}
+          {/* Protected Application Routes */}
           <Route
-            path="/*"
             element={
               <ProtectedRoute>
-                <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
-                  <Navbar />
-                  <main>
-                    <Routes>
-                      <Route path="/"                       element={<Landing />} />
-                      <Route path="/book"                   element={<BookParcel />} />
-                      <Route path="/match"                  element={<SmartMatch />} />
-                      <Route path="/optimizer"              element={<NetworkOptimizer />} />
-                      <Route path="/verify"                 element={<VerificationAudit />} />
-                      <Route path="/misinfo"                element={<MisinfoPortal />} />
-                      <Route path="/track"                  element={<Tracking />} />
-                      <Route path="/track/:parcelId"        element={<Tracking />} />
-                      <Route path="/tracking"               element={<Tracking />} />
-                      <Route path="/tracking/:parcelId"     element={<Tracking />} />
-                      <Route path="/dashboard"              element={<Dashboard />} />
-                      <Route path="*"                       element={<Navigate to="/" replace />} />
-                    </Routes>
-                  </main>
-                </div>
+                <AppLayout />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route path="/" element={<Landing />} />
+            <Route path="/book" element={<BookParcel />} />
+            <Route path="/match" element={<SmartMatch />} />
+            <Route path="/optimizer" element={<NetworkOptimizer />} />
+            <Route path="/verify" element={<VerificationAudit />} />
+            <Route path="/misinfo" element={<MisinfoPortal />} />
+            <Route path="/track" element={<Tracking />} />
+            <Route path="/track/:parcelId" element={<Tracking />} />
+            <Route path="/tracking" element={<Tracking />} />
+            <Route path="/tracking/:parcelId" element={<Tracking />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
         </Routes>
 
         <Toaster
