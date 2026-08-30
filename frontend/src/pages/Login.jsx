@@ -33,6 +33,7 @@ export default function Login() {
     if (!email.trim()) e.email = 'Email is required'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'Enter a valid email address'
     if (!password) e.password = 'Password is required'
+    else if (password.length < 6) e.password = 'Password must be at least 6 characters'
     return e
   }
 
@@ -47,8 +48,9 @@ export default function Login() {
       toast.success('Welcome back! 🎉')
       navigate(from, { replace: true })
     } catch (err) {
-      toast.error(err.message || 'Invalid email or password')
-      setErrors({ password: err.message || 'Invalid email or password' })
+      const msg = err.message || 'Login failed. Please check your credentials.'
+      toast.error(msg)
+      setErrors({ password: msg })
     } finally {
       setLoading(false)
     }
