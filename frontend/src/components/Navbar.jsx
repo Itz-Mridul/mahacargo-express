@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import { useAppStore } from '../store/appStore'
 import { useAuthStore } from '../store/authStore'
 
-const API = 'http://localhost:8000'
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 // ── Corruption type metadata ────────────────────────────────────────────────
 const CORRUPTION_META = {

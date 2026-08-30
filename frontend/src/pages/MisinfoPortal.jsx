@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
-const API = 'http://localhost:8000/api/misinfo'
+const API = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/misinfo`
 
 const CLAIM_TYPES = [
   { value: 'scheme', label: '🏛️ Govt Scheme / Policy Claim', desc: 'Rumours about PM Kisan, PMFBY, subsidy schemes' },
