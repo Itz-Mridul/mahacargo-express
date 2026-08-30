@@ -17,6 +17,7 @@ from slowapi.errors import RateLimitExceeded
 from app.config import get_settings
 from app.routers import parcels, buses, routes, optimize, tracking, analytics, simulation
 from app.routers.misinfo import router as misinfo_router
+from app.routers.auth import router as auth_router
 from app.simulation.blackout import router as blackout_router, start_health_check_task
 from app.db.supabase import get_db
 from app.simulation.gps_simulator import start_simulator
@@ -81,6 +82,7 @@ app.add_middleware(
 )
 
 # ─── Routers ──────────────────────────────────────────────────────────────────
+app.include_router(auth_router)
 app.include_router(parcels.router)
 app.include_router(buses.router)
 app.include_router(routes.router)

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../store/appStore'
+import { useAuthStore } from '../store/authStore'
 
 const API = 'http://localhost:8000'
 
@@ -189,6 +190,18 @@ export function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { userRole, setUserRole } = useAppStore()
+  const { user, logout } = useAuthStore()
+
+  const handleLogout = () => {
+    logout()
+    toast.success('Signed out successfully')
+    navigate('/login', { replace: true })
+  }
+
+  // Derive initials for avatar
+  const userName = user?.user_metadata?.name || user?.email || 'User'
+  const userRole2 = user?.user_metadata?.role || userRole
+  const initials = userName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
 
   const [status, setStatus] = useState({
     blackout_active: false,
@@ -387,43 +400,10 @@ export function Navbar() {
             </div>
 
             {/* Right side */}
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              {/* Role switcher */}
-              <span className="text-xs text-gray-500 hidden sm:block">Role:</span>
-              <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/10">
-                {[
-                  { id: 'citizen', internal: 'customer', label: '👤 Citizen', target: '/book', desc: 'Citizen Booking — Standard parcels & express delivery' },
-                  { id: 'farmer',  internal: 'farmer',   label: '🌾 Farmer',  target: '/book', desc: 'Farmer Portal — APMC wholesale market priority & produce crates' },
-                  { id: 'admin',   internal: 'admin',    label: '⚙️ Admin',   target: '/dashboard', desc: 'Admin Operations — Fleet telemetry, KPIs & chaos control' },
-                ].map((r) => {
-                  const isActive = (userRole === 'customer' && r.id === 'citizen') || userRole === r.id
-                  return (
-                    <button
-                      key={r.id}
-                      onClick={() => {
-                        setUserRole(r.internal)
-                        if (location.pathname !== r.target) {
-                          navigate(r.target)
-                        }
-                        toast.success(`${r.label} Portal: ${r.desc}`, { id: 'role-toast', duration: 2500 })
-                      }}
-                      title={r.desc}
-                      className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all capitalize cursor-pointer ${
-                        isActive
-                          ? 'bg-indigo-600 text-white shadow-sm'
-                          : 'text-gray-400 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      {r.label}
-                    </button>
-                  )
-                })}
-              </div>
-
+            <div className="flex items-center gap-2 flex-shrink-0">
               {/* Admin blackout controls */}
-              {userRole === 'admin' && (
-                <div className="flex items-center gap-1.5 ml-1">
-                  {/* DB status dot */}
+              {(userRole2 === 'admin' || userRole === 'admin') && (
+                <div className="flex items-center gap-1.5">
                   <div
                     className="w-2 h-2 rounded-full flex-shrink-0"
                     style={{
@@ -432,8 +412,6 @@ export function Navbar() {
                     }}
                     title={status.blackout_active ? 'DB Offline' : 'DB Healthy'}
                   />
-
-                  {/* Panel button */}
                   <button
                     onClick={() => setShowPanel(true)}
                     className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all border ${
@@ -442,7 +420,7 @@ export function Navbar() {
                         : 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700'
                     }`}
                   >
-                    {status.blackout_active ? '⚡ Blackout' : '⚡ Blackout'}
+                    ⚡ Blackout
                     {status.wal_queue_size > 0 && (
                       <span className="ml-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                         {status.wal_queue_size}
@@ -451,6 +429,30 @@ export function Navbar() {
                   </button>
                 </div>
               )}
+
+              {/* User avatar + name */}
+              <div className="flex items-center gap-2 pl-2 border-l border-white/10">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #6366f1, #06b6d4)' }}
+                  title={userName}
+                >
+                  {initials}
+                </div>
+                <div className="hidden sm:block">
+                  <p className="text-xs font-semibold text-white leading-none">{userName}</p>
+                  <p className="text-[10px] text-gray-400 capitalize mt-0.5">{userRole2 === 'customer' ? 'Citizen' : userRole2}</p>
+                </div>
+              </div>
+
+              {/* Logout button */}
+              <button
+                onClick={handleLogout}
+                className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-gray-400 hover:text-white hover:bg-red-500/10 border border-white/8 hover:border-red-500/30 transition-all"
+                title="Sign out"
+              >
+                Sign Out
+              </button>
             </div>
           </div>
         </div>

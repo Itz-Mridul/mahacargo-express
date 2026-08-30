@@ -1,8 +1,11 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import { Navbar } from './components/Navbar'
+import { ProtectedRoute } from './components/ProtectedRoute'
 import Landing from './pages/Landing'
+import Login from './pages/Login'
+import Signup from './pages/Signup'
 import BookParcel from './pages/BookParcel'
 import SmartMatch from './pages/SmartMatch'
 import Tracking from './pages/Tracking'
@@ -25,24 +28,39 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
-          <Navbar />
-          <main>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/book" element={<BookParcel />} />
-              <Route path="/match" element={<SmartMatch />} />
-              <Route path="/optimizer" element={<NetworkOptimizer />} />
-              <Route path="/verify" element={<VerificationAudit />} />
-              <Route path="/misinfo" element={<MisinfoPortal />} />
-              <Route path="/track" element={<Tracking />} />
-              <Route path="/track/:parcelId" element={<Tracking />} />
-              <Route path="/tracking" element={<Tracking />} />
-              <Route path="/tracking/:parcelId" element={<Tracking />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-            </Routes>
-          </main>
-        </div>
+        <Routes>
+          {/* ── Public Auth Pages (no Navbar) ── */}
+          <Route path="/login"  element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+
+          {/* ── Protected App (with Navbar) ── */}
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
+                  <Navbar />
+                  <main>
+                    <Routes>
+                      <Route path="/"                       element={<Landing />} />
+                      <Route path="/book"                   element={<BookParcel />} />
+                      <Route path="/match"                  element={<SmartMatch />} />
+                      <Route path="/optimizer"              element={<NetworkOptimizer />} />
+                      <Route path="/verify"                 element={<VerificationAudit />} />
+                      <Route path="/misinfo"                element={<MisinfoPortal />} />
+                      <Route path="/track"                  element={<Tracking />} />
+                      <Route path="/track/:parcelId"        element={<Tracking />} />
+                      <Route path="/tracking"               element={<Tracking />} />
+                      <Route path="/tracking/:parcelId"     element={<Tracking />} />
+                      <Route path="/dashboard"              element={<Dashboard />} />
+                      <Route path="*"                       element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </main>
+                </div>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
 
         <Toaster
           position="top-right"
