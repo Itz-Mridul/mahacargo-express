@@ -181,19 +181,45 @@ export default function BookParcel() {
 
   const validate = () => {
     const e = {}
-    if (!form.customer_name.trim()) e.customer_name = 'Sender name is required'
-    if (!form.pickup_stop_id) e.pickup_stop_id = 'Select a pickup stop / collection point'
-    if (!form.destination_stop_id) e.destination_stop_id = 'Select destination stop / APMC market'
-    if (form.pickup_stop_id === form.destination_stop_id) e.destination_stop_id = 'Destination must differ from pickup'
-    if (!form.weight_kg || parseFloat(form.weight_kg) <= 0) e.weight_kg = 'Enter a valid weight'
-    if (parseFloat(form.weight_kg) > 80) e.weight_kg = 'Maximum weight for bus hold is 80 kg'
+    if (!form.customer_name.trim()) {
+      e.customer_name = consignmentType === 'agri_produce' ? '🌾 Farmer / FPO Name is compulsory' : '👤 Sender Name is compulsory'
+    }
+    if (!form.pickup_stop_id) {
+      e.pickup_stop_id = '📍 Pickup Origin / Bus Stop is compulsory'
+    }
+    if (!form.destination_stop_id) {
+      e.destination_stop_id = '🎯 Destination / Drop Stop is compulsory'
+    }
+    if (form.pickup_stop_id && form.destination_stop_id && form.pickup_stop_id === form.destination_stop_id) {
+      e.destination_stop_id = 'Destination must differ from pickup stop'
+    }
+    if (!form.weight_kg || isNaN(parseFloat(form.weight_kg)) || parseFloat(form.weight_kg) <= 0) {
+      e.weight_kg = '⚖️ Weight is compulsory (minimum 0.5 kg)'
+    } else if (parseFloat(form.weight_kg) < 0.5) {
+      e.weight_kg = 'Minimum parcel weight is 0.5 kg'
+    } else if (parseFloat(form.weight_kg) > 80) {
+      e.weight_kg = 'Maximum weight for bus hold capacity is 80 kg'
+    }
+
+    const cleanPhone = (form.recipient_phone || '').replace(/\D/g, '')
+    if (!cleanPhone) {
+      e.recipient_phone = '📱 10-digit recipient mobile number is compulsory for OTP verification'
+    } else if (cleanPhone.length !== 10) {
+      e.recipient_phone = `Mobile number must be exactly 10 digits (currently ${cleanPhone.length}/10 digits entered)`
+    } else if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      e.recipient_phone = 'Please enter a valid 10-digit Indian mobile number (starting with 6, 7, 8, or 9)'
+    }
+
     setErrors(e)
     return Object.keys(e).length === 0
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!validate()) return
+    if (!validate()) {
+      toast.error('Please fill in all compulsory fields (*)')
+      return
+    }
     matchMutation.mutate({ ...form, weight_kg: parseFloat(form.weight_kg) })
   }
 
@@ -211,6 +237,9 @@ export default function BookParcel() {
         <p className="text-gray-400 text-sm mt-1">
           Intelligently matches your package or harvest with scheduled public buses already on route.
         </p>
+        <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-medium">
+          <span>*</span> All fields marked with <span className="font-bold underline">Compulsory</span> are strictly required
+        </div>
       </div>
 
       {/* Consignment Type Switcher */}
@@ -220,6 +249,7 @@ export default function BookParcel() {
           onClick={() => {
             setConsignmentType('citizen_parcel')
             setForm(f => ({ ...f, commodity: 'general', priority: 'standard' }))
+            setErrors({})
           }}
           className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
             consignmentType === 'citizen_parcel'
@@ -235,6 +265,7 @@ export default function BookParcel() {
           onClick={() => {
             setConsignmentType('agri_produce')
             setForm(f => ({ ...f, commodity: 'onions', priority: 'urgent_perishable' }))
+            setErrors({})
           }}
           className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
             consignmentType === 'agri_produce'
@@ -261,19 +292,26 @@ export default function BookParcel() {
         )}
 
         {/* Sender / Farmer name */}
-        <Field label={consignmentType === 'agri_produce' ? "Farmer / FPO Name" : "Sender Name"} error={errors.customer_name}>
+        <Field
+          label={consignmentType === 'agri_produce' ? "Farmer / FPO Name" : "Sender Full Name"}
+          required
+          error={errors.customer_name}
+        >
           <input
             type="text"
             value={form.customer_name}
-            onChange={e => setForm(f => ({ ...f, customer_name: e.target.value }))}
-            placeholder={consignmentType === 'agri_produce' ? "e.g. Ramesh Shinde (Godavari FPO)" : "Enter your full name"}
+            onChange={e => {
+              setForm(f => ({ ...f, customer_name: e.target.value }))
+              if (errors.customer_name) setErrors(err => ({ ...err, customer_name: null }))
+            }}
+            placeholder={consignmentType === 'agri_produce' ? "e.g. Ramesh Shinde (Godavari FPO)" : "e.g. Anand Deshmukh"}
             className="form-input"
           />
         </Field>
 
         {/* Agricultural Commodity selector if agri mode */}
         {consignmentType === 'agri_produce' && (
-          <Field label="Agricultural Commodity">
+          <Field label="Agricultural Commodity" hint="Rural Harvest Classification">
             <select
               value={form.commodity}
               onChange={e => setForm(f => ({ ...f, commodity: e.target.value }))}
@@ -291,7 +329,7 @@ export default function BookParcel() {
 
         {/* Origin & Destination Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Pickup Origin / Bus Stop" error={errors.pickup_stop_id}>
+          <Field label="Pickup Origin / Bus Stop" required error={errors.pickup_stop_id}>
             <select
               value={form.pickup_stop_id}
               onChange={e => {
@@ -299,9 +337,9 @@ export default function BookParcel() {
                 setForm(f => ({
                   ...f,
                   pickup_stop_id: newPickup,
-                  // clear destination if it is the same or not in new valid list
                   destination_stop_id: f.destination_stop_id === newPickup ? '' : f.destination_stop_id
                 }))
+                if (errors.pickup_stop_id) setErrors(err => ({ ...err, pickup_stop_id: null }))
               }}
               className="form-input"
             >
@@ -312,10 +350,18 @@ export default function BookParcel() {
             </select>
           </Field>
 
-          <Field label="Destination / Market Drop" error={errors.destination_stop_id} hint={form.pickup_stop_id ? "Direct bus route stops" : "Select pickup first"}>
+          <Field
+            label="Destination / Market Drop"
+            required
+            error={errors.destination_stop_id}
+            hint={form.pickup_stop_id ? "Direct bus route stops" : "Select pickup first"}
+          >
             <select
               value={form.destination_stop_id}
-              onChange={e => setForm(f => ({ ...f, destination_stop_id: e.target.value }))}
+              onChange={e => {
+                setForm(f => ({ ...f, destination_stop_id: e.target.value }))
+                if (errors.destination_stop_id) setErrors(err => ({ ...err, destination_stop_id: null }))
+              }}
               className="form-input"
               disabled={!form.pickup_stop_id}
             >
@@ -329,11 +375,19 @@ export default function BookParcel() {
 
         {/* Weight & Priority */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Weight (kg)" error={errors.weight_kg} hint="Hold limit: 80 kg">
+          <Field
+            label="Consignment Weight (kg)"
+            required
+            error={errors.weight_kg}
+            hint="0.5 kg to 80 kg limit"
+          >
             <input
               type="number"
               value={form.weight_kg}
-              onChange={e => setForm(f => ({ ...f, weight_kg: e.target.value }))}
+              onChange={e => {
+                setForm(f => ({ ...f, weight_kg: e.target.value }))
+                if (errors.weight_kg) setErrors(err => ({ ...err, weight_kg: null }))
+              }}
               placeholder="e.g. 15"
               min="0.5"
               max="80"
@@ -342,7 +396,7 @@ export default function BookParcel() {
             />
           </Field>
 
-          <Field label="Priority & SLA">
+          <Field label="Priority & SLA" hint="Transit Routing Profile">
             <select
               value={form.priority}
               onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
@@ -356,14 +410,38 @@ export default function BookParcel() {
         </div>
 
         {/* Recipient phone */}
-        <Field label="Recipient Contact Number">
-          <input
-            type="text"
-            value={form.recipient_phone}
-            onChange={e => setForm(f => ({ ...f, recipient_phone: e.target.value }))}
-            placeholder="10-digit mobile number for OTP handover"
-            className="form-input"
-          />
+        <Field
+          label="Recipient Mobile Number (10 Digits)"
+          required
+          error={errors.recipient_phone}
+          hint={form.recipient_phone ? `${form.recipient_phone.replace(/\D/g, '').length}/10 digits` : "Compulsory for OTP Handshake"}
+        >
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 text-sm font-semibold">
+              +91
+            </div>
+            <input
+              type="tel"
+              maxLength={10}
+              value={form.recipient_phone}
+              onChange={e => {
+                const numOnly = e.target.value.replace(/\D/g, '').slice(0, 10)
+                setForm(f => ({ ...f, recipient_phone: numOnly }))
+                if (errors.recipient_phone) setErrors(err => ({ ...err, recipient_phone: null }))
+              }}
+              placeholder="10-digit mobile number (e.g. 9876543210)"
+              className="form-input pl-12 font-mono tracking-wider"
+            />
+            {form.recipient_phone && (
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs font-semibold">
+                {form.recipient_phone.length === 10 && /^[6-9]\d{9}$/.test(form.recipient_phone) ? (
+                  <span className="text-emerald-400 flex items-center gap-1">✓ Valid</span>
+                ) : (
+                  <span className="text-amber-400">{form.recipient_phone.length}/10</span>
+                )}
+              </div>
+            )}
+          </div>
         </Field>
 
         <Button
@@ -395,14 +473,23 @@ export default function BookParcel() {
 }
 
 
-function Field({ label, children, error, hint }) {
+function Field({ label, children, error, hint, required }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-300 mb-1.5">
-        {label} {hint && <span className="text-gray-500 text-xs">({hint})</span>}
-      </label>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="block text-sm font-medium text-gray-300 flex items-center gap-1.5">
+          <span>{label}</span>
+          {required && (
+            <span className="text-[10px] uppercase font-bold tracking-wider text-rose-400 bg-rose-500/15 border border-rose-500/30 px-1.5 py-0.5 rounded">
+              * Compulsory
+            </span>
+          )}
+        </label>
+        {hint && <span className="text-gray-400 text-xs font-normal">{hint}</span>}
+      </div>
       {children}
-      {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+      {error && <p className="text-red-400 text-xs mt-1.5 flex items-center gap-1"><span>⚠️</span> {error}</p>}
     </div>
   )
 }
+
