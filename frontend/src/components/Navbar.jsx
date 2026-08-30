@@ -268,14 +268,27 @@ export function Navbar() {
     await fetchStatus()
   }
 
-  const navLinks = [
-    { to: '/', label: 'Control Center' },
-    { to: '/book', label: 'Book & Ship' },
-    { to: '/optimizer', label: 'Network Optimizer' },
-    { to: '/verify', label: 'Proof of Delivery' },
-    { to: '/misinfo', label: '🛡️ Misinfo Shield' },
-    { to: '/dashboard', label: 'Dashboard' },
-  ]
+  let navLinks = []
+  if (userRole2 === 'admin') {
+    navLinks = [
+      { to: '/dashboard', label: 'Admin Dashboard' },
+      { to: '/optimizer', label: 'Network Optimizer' },
+      { to: '/misinfo', label: '🛡️ Misinfo Shield' },
+      { to: '/verify', label: 'Audit & PoD' },
+    ]
+  } else if (userRole2 === 'farmer') {
+    navLinks = [
+      { to: '/', label: 'Home' },
+      { to: '/book', label: 'APMC Logistics (Priority)' },
+      { to: '/verify', label: 'Track & Verify' },
+    ]
+  } else {
+    navLinks = [
+      { to: '/', label: 'Home' },
+      { to: '/book', label: 'Book & Ship' },
+      { to: '/verify', label: 'Track & Verify' },
+    ]
+  }
 
   const meta = status.corruption_type ? (CORRUPTION_META[status.corruption_type] || CORRUPTION_META.manual) : null
   const downSec = status.blackout_started_at
