@@ -1,0 +1,53 @@
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+node_modules/
+dist/
+*.local
+
+# Python / Backend
+backend/venv/
+backend/.venv/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/build/
+backend/dist/
+backend/*.egg-info/
+
+# Environment Variables
+.env
+backend/.env
+frontend/.env.local
+frontend/.env.production.local
+frontend/.env.development.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# System & IDE
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# Project specific caches
+.cache/
+.pytest_cache/

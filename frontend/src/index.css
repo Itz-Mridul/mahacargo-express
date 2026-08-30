@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --color-brand: #6366f1;
+  --color-brand-dark: #4f46e5;
+  --color-accent: #22d3ee;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-bg: #0a0e1a;
+  --color-surface: #111827;
+  --color-surface2: #1f2937;
+  --color-border: rgba(255,255,255,0.08);
+  --color-text: #f9fafb;
+  --color-text-muted: #9ca3af;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+/* Leaflet overrides */
+.leaflet-container {
+  background: #0d1117 !important;
+  font-family: 'Inter', sans-serif;
+}
+.leaflet-popup-content-wrapper {
+  background: #1f2937;
+  color: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.leaflet-popup-tip { background: #1f2937; }
+.leaflet-control-zoom a {
+  background: #1f2937 !important;
+  color: #f9fafb !important;
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+
+/* Animations */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.animate-slide-up { animation: slide-up 0.4s ease both; }
+.animate-fade-in  { animation: fade-in 0.3s ease both; }
+.animate-pulse-glow { animation: pulse-glow 2s ease infinite; }
+
+/* Glass card */
+.glass {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+}
+
+/* Score bar */
+.score-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+.score-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #6366f1, #22d3ee);
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Demo badge */
+.demo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
