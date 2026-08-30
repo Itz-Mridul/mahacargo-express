@@ -12,6 +12,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.102.8",
     "axios": "^1.20.0",
+    "html5-qrcode": "^2.3.8",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.37.0",
     "react": "^19.2.8",

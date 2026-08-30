@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchBuses } from '../services/api'
 import { StatusBadge } from '../components/UI'
 import toast from 'react-hot-toast'
+import { Html5QrcodeScanner } from 'html5-qrcode'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -12,6 +13,7 @@ export default function TransitScanner() {
   const [scannedParcel, setScannedParcel] = useState(null)
   const [selectedBusId, setSelectedBusId] = useState('')
   const [isScanning, setIsScanning] = useState(false)
+  const [cameraActive, setCameraActive] = useState(false)
 
   // Fetch active buses
   const { data: buses, isLoading: busesLoading } = useQuery({
@@ -20,19 +22,16 @@ export default function TransitScanner() {
     refetchInterval: 10000,
   })
 
-  // Simulate scanning a tracking ID
-  const handleScan = async (e) => {
-    e.preventDefault()
-    if (!trackingId.trim()) return
-
+  const triggerFetch = async (idToFetch) => {
     setIsScanning(true)
     try {
-      const res = await fetch(`${API}/api/parcels/${trackingId.toUpperCase().trim()}`)
+      const res = await fetch(`${API}/api/parcels/${idToFetch.toUpperCase().trim()}`)
       if (!res.ok) throw new Error('Parcel not found')
       const data = await res.json()
       
       if (data.status === 'in_transit' || data.status === 'delivered') {
         toast.error(`Parcel is already ${data.status.replace('_', ' ')}.`)
+        setScannedParcel(data)
       } else {
         setScannedParcel(data)
         toast.success('Parcel scanned successfully')
@@ -43,6 +42,44 @@ export default function TransitScanner() {
       setIsScanning(false)
     }
   }
+
+  // Handle manual input
+  const handleScan = async (e) => {
+    e.preventDefault()
+    if (!trackingId.trim()) return
+    await triggerFetch(trackingId)
+  }
+
+  // Camera QR Scanner Initialization
+  useEffect(() => {
+    if (!cameraActive) return
+    
+    // Slight delay to ensure DOM element is ready
+    const timer = setTimeout(() => {
+      const scanner = new Html5QrcodeScanner("reader", {
+        qrbox: { width: 250, height: 250 },
+        fps: 10,
+      }, false)
+      
+      scanner.render(
+        (decodedText) => {
+          setTrackingId(decodedText)
+          triggerFetch(decodedText)
+          setCameraActive(false) // Stop camera after successful scan
+          scanner.clear()
+        },
+        (error) => {
+          // Ignore empty frame errors
+        }
+      )
+      
+      return () => {
+        scanner.clear().catch(e => console.error("Failed to clear scanner", e))
+      }
+    }, 100)
+    
+    return () => clearTimeout(timer)
+  }, [cameraActive])
 
   // Assign to Bus Mutation
   const assignMutation = useMutation({
@@ -95,21 +132,27 @@ export default function TransitScanner() {
           </h2>
           
           <div className="aspect-video bg-black/40 rounded-xl border-2 border-dashed border-indigo-500/30 flex items-center justify-center mb-6 relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSJub25lIi8+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=')] opacity-50" />
-            <div className="text-center z-10">
-              {isScanning ? (
-                <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              ) : (
-                <div className="w-16 h-16 border-2 border-indigo-400/50 rounded-lg flex items-center justify-center mx-auto mb-2 relative">
-                   <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-indigo-400" />
-                   <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-indigo-400" />
-                   <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-indigo-400" />
-                   <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-indigo-400" />
-                   <div className="w-full h-0.5 bg-red-500/50 absolute animate-[scan_2s_ease-in-out_infinite]" />
+            {cameraActive ? (
+              <div id="reader" className="w-full h-full bg-white text-black" />
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className="text-center z-10 p-4">
+                  <div className="w-16 h-16 border-2 border-indigo-400/50 rounded-lg flex items-center justify-center mx-auto mb-3 relative">
+                     <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-indigo-400" />
+                     <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-indigo-400" />
+                     <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-indigo-400" />
+                     <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-indigo-400" />
+                  </div>
+                  <button
+                    onClick={() => setCameraActive(true)}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-bold text-white shadow-lg transition-all"
+                  >
+                    Turn on Camera & Scan
+                  </button>
+                  <p className="text-[10px] text-gray-500 mt-2">Browser will request camera permissions</p>
                 </div>
-              )}
-              <p className="text-sm text-gray-400 font-mono">Simulated Camera Feed</p>
-            </div>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleScan} className="flex gap-2">
@@ -146,21 +189,40 @@ export default function TransitScanner() {
             <div className="space-y-6">
               {/* Parcel Info */}
               <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex justify-between items-start mb-2">
+                <div className="flex justify-between items-start mb-4 border-b border-white/10 pb-3">
                   <div>
-                    <p className="text-xs text-gray-400">Tracking ID</p>
-                    <p className="text-lg font-bold font-mono text-white">{scannedParcel.tracking_id}</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Tracking ID</p>
+                    <p className="text-xl font-bold font-mono text-white">{scannedParcel.tracking_id}</p>
                   </div>
                   <StatusBadge status={scannedParcel.status} />
                 </div>
-                <div className="grid grid-cols-2 gap-4 mt-3">
+                
+                {/* Admin Visibility: Who Booked & Who Accepted */}
+                <div className="mb-4 bg-black/20 p-3 rounded-lg border border-white/5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400">Booked By (Sender):</span>
+                    <span className="text-sm font-semibold text-white">
+                      {scannedParcel.customer_name || 'Citizen/Farmer'}
+                    </span>
+                  </div>
+                  {(scannedParcel.status === 'in_transit' || scannedParcel.status === 'assigned' || scannedParcel.status === 'delivered') && (
+                    <div className="flex items-center justify-between border-t border-white/10 pt-2">
+                      <span className="text-xs text-gray-400">Accepted By (Bus):</span>
+                      <span className="text-sm font-semibold text-cyan-400 flex items-center gap-1">
+                        🚌 {scannedParcel.assigned_bus_id || 'Transit Network'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-gray-400">Weight</p>
                     <p className="font-mono text-sm">{scannedParcel.weight_kg} kg</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">Destination</p>
-                    <p className="text-sm">{scannedParcel.dropoff_location}</p>
+                    <p className="text-sm truncate" title={scannedParcel.dropoff_location}>{scannedParcel.dropoff_location}</p>
                   </div>
                 </div>
               </div>
