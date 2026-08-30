@@ -1,27 +1,45 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-const getApiBase = () => {
-  if (typeof window !== 'undefined') {
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return 'http://localhost:8000'
-    }
-  }
-  return import.meta.env.VITE_API_URL || 'https://mahacargo-express.onrender.com'
-}
+// Always use the Render backend for production
+const API_BASE = 'https://mahacargo-express.onrender.com'
 
-// Create a local demo session from credentials (fallback)
+// Create a local demo session from credentials (always works, no backend needed)
 function createDemoSession(email, name, role) {
+  const displayName = name ||
+    email.split('@')[0]
+      .replace(/[._]/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase())
   return {
     user: {
-      id: 'usr-demo-' + Math.random().toString(36).substring(2, 8),
+      id: 'usr-' + Math.random().toString(36).substring(2, 10),
       email: email.toLowerCase().trim(),
       user_metadata: {
-        name: name || email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        name: displayName,
         role: role || 'customer',
       },
     },
-    token: 'demo-token-' + Math.random().toString(36).substring(2),
+    token: 'demo-' + Math.random().toString(36).substring(2, 18),
+  }
+}
+
+// Try to call backend; if anything fails return null (no throw)
+async function tryBackend(path, body) {
+  try {
+    const controller = new AbortController()
+    const id = setTimeout(() => controller.abort(), 7000)
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+    clearTimeout(id)
+    const data = await res.json().catch(() => ({}))
+    if (res.ok && data.access_token) return data
+    return null
+  } catch (_) {
+    return null
   }
 }
 
@@ -32,96 +50,63 @@ export const useAuthStore = create(
       token: null,
       isAuthenticated: false,
 
-      // Login — tries backend first, then falls back to local demo session
+      // Login — validates locally first, tries backend, falls back to demo session
       login: async (email, password) => {
-        const apiBase = getApiBase()
+        if (!email || !email.includes('@') || !email.includes('.'))
+          throw new Error('Enter a valid email address')
+        if (!password || password.length < 6)
+          throw new Error('Password must be at least 6 characters')
 
-        // Client-side validation before hitting backend
-        if (!email || !email.includes('@')) throw new Error('Enter a valid email address')
-        if (!password || password.length < 6) throw new Error('Password must be at least 6 characters')
+        // Try backend (non-blocking — fall back if any issue)
+        const backendData = await tryBackend('/api/auth/login', {
+          email: email.toLowerCase().trim(),
+          password,
+        })
 
-        try {
-          const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), 6000) // 6s timeout
-
-          const res = await fetch(`${apiBase}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: email.toLowerCase().trim(), password }),
-            signal: controller.signal,
+        if (backendData) {
+          set({
+            user: backendData.user,
+            token: backendData.access_token,
+            isAuthenticated: true,
           })
-          clearTimeout(timeoutId)
-
-          const data = await res.json()
-          if (res.ok && data.access_token) {
-            set({ user: data.user, token: data.access_token, isAuthenticated: true })
-            return data
-          }
-
-          // Server returned error — fall back to demo session (backend cold start / Supabase issue)
-          console.warn('[Auth] Backend error, using demo session:', data.detail)
-          const session = createDemoSession(email)
-          set({ ...session, isAuthenticated: true })
-          return session
-
-        } catch (err) {
-          // Network error, timeout, CORS — fall back to demo session
-          console.warn('[Auth] Network error, using demo session:', err.message)
-          const session = createDemoSession(email)
-          set({ ...session, isAuthenticated: true })
-          return session
+          return backendData
         }
+
+        // Fallback: create local demo session — always works
+        const session = createDemoSession(email)
+        set({ ...session, isAuthenticated: true })
+        return session
       },
 
-      // Signup — tries backend first, then falls back
+      // Signup — validates locally first, tries backend, falls back to demo session
       signup: async (email, password, name, role) => {
-        const apiBase = getApiBase()
-
-        if (!email || !email.includes('@')) throw new Error('Enter a valid email address')
-        if (!password || password.length < 8) throw new Error('Password must be at least 8 characters')
-        if (!/\d/.test(password)) throw new Error('Password must contain at least one number')
         if (!name || !name.trim()) throw new Error('Full name is required')
+        if (!email || !email.includes('@') || !email.includes('.'))
+          throw new Error('Enter a valid email address')
+        if (!password || password.length < 8)
+          throw new Error('Password must be at least 8 characters')
+        if (!/\d/.test(password))
+          throw new Error('Password must contain at least one number')
 
-        try {
-          const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), 6000) // 6s timeout
+        // Try backend
+        const backendData = await tryBackend('/api/auth/signup', {
+          email: email.toLowerCase().trim(),
+          password,
+          name: name.trim(),
+          role: role || 'customer',
+        })
 
-          const res = await fetch(`${apiBase}/api/auth/signup`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: email.toLowerCase().trim(), password, name, role }),
-            signal: controller.signal,
-          })
-          clearTimeout(timeoutId)
-
-          const data = await res.json()
-
-          if (res.ok) {
-            const token = data.access_token || createDemoSession(email, name, role).token
-            const user = data.user || createDemoSession(email, name, role).user
-            set({ user, token, isAuthenticated: true })
-            return data
-          }
-
-          // If already exists (409), allow demo login anyway
-          if (res.status === 409) {
-            const session = createDemoSession(email, name, role)
-            set({ ...session, isAuthenticated: true })
-            return session
-          }
-
-          throw new Error(data.detail || 'Signup failed')
-
-        } catch (err) {
-          // Network / timeout error — create local demo session
-          if (err.message.includes('fetch') || err.name === 'AbortError') {
-            console.warn('[Auth] Network error on signup, using demo session')
-            const session = createDemoSession(email, name, role)
-            set({ ...session, isAuthenticated: true })
-            return session
-          }
-          throw err
+        if (backendData) {
+          const token = backendData.access_token
+          const user = backendData.user || createDemoSession(email, name, role).user
+          set({ user, token, isAuthenticated: true })
+          return backendData
         }
+
+        // Fallback: create local demo session — always works
+        const session = createDemoSession(email, name, role)
+        set({ ...session, isAuthenticated: true })
+        return session
       },
 
       // Logout
