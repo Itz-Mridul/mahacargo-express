@@ -21,10 +21,11 @@ _client: Optional[Client] = None
 def get_db() -> Client:
     global _client
     if _client is None:
-        _client = create_client(
-            settings.supabase_url,
-            settings.supabase_service_role_key,
-        )
+        url = (settings.supabase_url or os.getenv("SUPABASE_URL", "")).strip()
+        key = (settings.supabase_service_role_key or os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")).strip()
+        if not url or not key:
+            raise ValueError(f"Supabase credentials missing: url='{url}'")
+        _client = create_client(url, key)
     return _client
 
 

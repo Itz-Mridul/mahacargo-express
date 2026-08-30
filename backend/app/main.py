@@ -81,7 +81,7 @@ app.include_router(blackout_router)
 app.include_router(misinfo_router)
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health():
     return {
         "status": "ok",
@@ -91,6 +91,6 @@ async def health():
     }
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def root():
     return {"message": "SmartBus Parcel API — visit /docs for API documentation"}

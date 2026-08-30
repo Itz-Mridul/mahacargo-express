@@ -1,14 +1,14 @@
+import os
 from pydantic_settings import BaseSettings
-from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    supabase_url: str = ""
-    supabase_anon_key: str = ""
-    supabase_service_role_key: str = ""
-    osrm_url: str = "http://router.project-osrm.org"
-    admin_key: str = "smartbus-admin-secret-2024"
-    app_env: str = "development"
+    supabase_url: str = os.getenv("SUPABASE_URL", "")
+    supabase_anon_key: str = os.getenv("SUPABASE_ANON_KEY", "")
+    supabase_service_role_key: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    osrm_url: str = os.getenv("OSRM_URL", "http://router.project-osrm.org")
+    admin_key: str = os.getenv("ADMIN_KEY", "smartbus-admin-secret-2024")
+    app_env: str = os.getenv("APP_ENV", "development")
 
     # Optimization weights (must sum to 1.0)
     weight_route_match: float = 0.40
