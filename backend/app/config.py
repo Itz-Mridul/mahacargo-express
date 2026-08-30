@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     supabase_url: str = "https://txkozzqxdmugmftdzwjq.supabase.co"
-    supabase_anon_key: str = ""
-    supabase_service_role_key: str = ""
+    supabase_anon_key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4a296enF4ZG11Z21mdGR6d2pxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5OTM5NzIsImV4cCI6MjEwMzU2OTk3Mn0.fDjNg38E4A7X5jXFk9Ij1UlOZpi4JW-8LAFPeRpezRY"
+    supabase_service_role_key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4a296enF4ZG11Z21mdGR6d2pxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Nzk5Mzk3MiwiZXhwIjoyMTAzNTY5OTcyfQ.gWkGFesQ8MN8qDQBe6KNXsGjFhH_wt4OZVeXkUZePuY"
     osrm_url: str = "http://router.project-osrm.org"
     admin_key: str = "smartbus-admin-secret-2024"
     app_env: str = "production"
