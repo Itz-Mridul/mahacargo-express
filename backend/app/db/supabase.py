@@ -157,11 +157,164 @@ async def get_route_by_id(route_id: str) -> Optional[Dict]:
     return None
 
 
+DEFAULT_BUSES = [
+    {
+        "id": "b-101",
+        "bus_number": "MH-15-BT-101",
+        "route_id": "r-001",
+        "total_capacity_kg": 120.0,
+        "available_capacity_kg": 120.0,
+        "current_lat": 19.8898,
+        "current_lng": 74.4773,
+        "current_stop_index": 0,
+        "status": "active",
+        "passenger_occupancy_pct": 65.0,
+        "is_electric": False,
+        "battery_pct": 85.0,
+        "routes": DEFAULT_ROUTES[0]
+    },
+    {
+        "id": "b-102",
+        "bus_number": "MH-15-BT-102",
+        "route_id": "r-001",
+        "total_capacity_kg": 80.0,
+        "available_capacity_kg": 80.0,
+        "current_lat": 19.8845,
+        "current_lng": 74.4801,
+        "current_stop_index": 1,
+        "status": "active",
+        "passenger_occupancy_pct": 40.0,
+        "is_electric": True,
+        "battery_pct": 92.0,
+        "routes": DEFAULT_ROUTES[0]
+    },
+    {
+        "id": "b-103",
+        "bus_number": "MH-15-BT-103",
+        "route_id": "r-001",
+        "total_capacity_kg": 150.0,
+        "available_capacity_kg": 32.0,
+        "current_lat": 19.7168,
+        "current_lng": 74.4765,
+        "current_stop_index": 2,
+        "status": "active",
+        "passenger_occupancy_pct": 78.0,
+        "is_electric": False,
+        "battery_pct": 60.0,
+        "routes": DEFAULT_ROUTES[0]
+    },
+    {
+        "id": "b-104",
+        "bus_number": "MH-15-BT-104",
+        "route_id": "r-002",
+        "total_capacity_kg": 100.0,
+        "available_capacity_kg": 100.0,
+        "current_lat": 19.8898,
+        "current_lng": 74.4773,
+        "current_stop_index": 0,
+        "status": "active",
+        "passenger_occupancy_pct": 50.0,
+        "is_electric": False,
+        "battery_pct": 75.0,
+        "routes": DEFAULT_ROUTES[1]
+    },
+    {
+        "id": "b-105",
+        "bus_number": "MH-15-BT-105",
+        "route_id": "r-002",
+        "total_capacity_kg": 90.0,
+        "available_capacity_kg": 45.0,
+        "current_lat": 20.0789,
+        "current_lng": 74.1135,
+        "current_stop_index": 1,
+        "status": "active",
+        "passenger_occupancy_pct": 62.0,
+        "is_electric": False,
+        "battery_pct": 80.0,
+        "routes": DEFAULT_ROUTES[1]
+    },
+    {
+        "id": "b-106",
+        "bus_number": "MH-15-BT-106",
+        "route_id": "r-003",
+        "total_capacity_kg": 200.0,
+        "available_capacity_kg": 200.0,
+        "current_lat": 19.9023,
+        "current_lng": 74.4691,
+        "current_stop_index": 0,
+        "status": "active",
+        "passenger_occupancy_pct": 35.0,
+        "is_electric": False,
+        "battery_pct": 95.0,
+        "routes": DEFAULT_ROUTES[2]
+    },
+    {
+        "id": "b-107",
+        "bus_number": "MH-15-BT-107",
+        "route_id": "r-003",
+        "total_capacity_kg": 180.0,
+        "available_capacity_kg": 28.0,
+        "current_lat": 19.8898,
+        "current_lng": 74.4773,
+        "current_stop_index": 1,
+        "status": "active",
+        "passenger_occupancy_pct": 85.0,
+        "is_electric": False,
+        "battery_pct": 50.0,
+        "routes": DEFAULT_ROUTES[2]
+    },
+    {
+        "id": "b-108",
+        "bus_number": "MH-15-BT-108",
+        "route_id": "r-004",
+        "total_capacity_kg": 100.0,
+        "available_capacity_kg": 100.0,
+        "current_lat": 19.7651,
+        "current_lng": 74.4773,
+        "current_stop_index": 0,
+        "status": "active",
+        "passenger_occupancy_pct": 45.0,
+        "is_electric": False,
+        "battery_pct": 70.0,
+        "routes": DEFAULT_ROUTES[3]
+    },
+    {
+        "id": "b-109",
+        "bus_number": "MH-15-BT-109",
+        "route_id": "r-004",
+        "total_capacity_kg": 120.0,
+        "available_capacity_kg": 75.0,
+        "current_lat": 19.7168,
+        "current_lng": 74.4765,
+        "current_stop_index": 1,
+        "status": "active",
+        "passenger_occupancy_pct": 70.0,
+        "is_electric": False,
+        "battery_pct": 65.0,
+        "routes": DEFAULT_ROUTES[3]
+    },
+    {
+        "id": "b-110",
+        "bus_number": "MH-15-BT-110",
+        "route_id": "r-005",
+        "total_capacity_kg": 90.0,
+        "available_capacity_kg": 90.0,
+        "current_lat": 19.8898,
+        "current_lng": 74.4773,
+        "current_stop_index": 0,
+        "status": "active",
+        "passenger_occupancy_pct": 30.0,
+        "is_electric": False,
+        "battery_pct": 88.0,
+        "routes": DEFAULT_ROUTES[4]
+    }
+]
+
 # ─── Buses ────────────────────────────────────────────────────────────────────
 
 async def get_all_buses() -> List[Dict]:
     if manager.is_active:
-        return manager.get_cache("get_all_buses") or []
+        return manager.get_cache("get_all_buses") or DEFAULT_BUSES
     cached = _get_fast_cache("get_all_buses", ttl_sec=4.0)
     if cached is not None:
         return cached
@@ -172,29 +325,22 @@ async def get_all_buses() -> List[Dict]:
         for b in buses:
             if b.get("routes") and isinstance(b["routes"].get("stops"), str):
                 b["routes"]["stops"] = json.loads(b["routes"]["stops"])
+        if not buses:
+            buses = DEFAULT_BUSES
     except Exception as e:
         print(f"[Supabase] Warning: Fetching buses fallback ({e})")
-        buses = []
+        buses = DEFAULT_BUSES
     manager.update_cache("get_all_buses", buses)
     _set_fast_cache("get_all_buses", buses, ttl_sec=4.0)
     return buses
 
 
 async def get_bus_by_id(bus_id: str) -> Optional[Dict]:
-    if manager.is_active:
-        buses = manager.get_cache("get_all_buses") or []
-        for b in buses:
-            if b["id"] == bus_id:
-                return b
-        return None
-    db = get_db()
-    res = db.table("buses").select("*, routes(*)").eq("id", bus_id).single().execute()
-    if not res.data:
-        return None
-    b = res.data
-    if b.get("routes") and isinstance(b["routes"].get("stops"), str):
-        b["routes"]["stops"] = json.loads(b["routes"]["stops"])
-    return b
+    buses = await get_all_buses()
+    for b in buses:
+        if b["id"] == bus_id:
+            return b
+    return None
 
 
 async def update_bus_position(bus_id: str, lat: float, lng: float, stop_index: int, _bypass_blackout=False) -> None:
