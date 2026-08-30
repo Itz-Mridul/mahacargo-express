@@ -182,19 +182,19 @@ export default function BookParcel() {
   const validate = () => {
     const e = {}
     if (!form.customer_name.trim()) {
-      e.customer_name = consignmentType === 'agri_produce' ? '🌾 Farmer / FPO Name is compulsory' : '👤 Sender Name is compulsory'
+      e.customer_name = consignmentType === 'agri_produce' ? 'Farmer / FPO Name is required' : 'Sender Name is required'
     }
     if (!form.pickup_stop_id) {
-      e.pickup_stop_id = '📍 Pickup Origin / Bus Stop is compulsory'
+      e.pickup_stop_id = 'Please select a pickup origin'
     }
     if (!form.destination_stop_id) {
-      e.destination_stop_id = '🎯 Destination / Drop Stop is compulsory'
+      e.destination_stop_id = 'Please select a destination drop stop'
     }
     if (form.pickup_stop_id && form.destination_stop_id && form.pickup_stop_id === form.destination_stop_id) {
       e.destination_stop_id = 'Destination must differ from pickup stop'
     }
     if (!form.weight_kg || isNaN(parseFloat(form.weight_kg)) || parseFloat(form.weight_kg) <= 0) {
-      e.weight_kg = '⚖️ Weight is compulsory (minimum 0.5 kg)'
+      e.weight_kg = 'Weight is required (min 0.5 kg)'
     } else if (parseFloat(form.weight_kg) < 0.5) {
       e.weight_kg = 'Minimum parcel weight is 0.5 kg'
     } else if (parseFloat(form.weight_kg) > 80) {
@@ -203,11 +203,11 @@ export default function BookParcel() {
 
     const cleanPhone = (form.recipient_phone || '').replace(/\D/g, '')
     if (!cleanPhone) {
-      e.recipient_phone = '📱 10-digit recipient mobile number is compulsory for OTP verification'
+      e.recipient_phone = '10-digit recipient mobile number is required for OTP handover'
     } else if (cleanPhone.length !== 10) {
-      e.recipient_phone = `Mobile number must be exactly 10 digits (currently ${cleanPhone.length}/10 digits entered)`
+      e.recipient_phone = `Mobile number must be exactly 10 digits (${cleanPhone.length}/10 entered)`
     } else if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
-      e.recipient_phone = 'Please enter a valid 10-digit Indian mobile number (starting with 6, 7, 8, or 9)'
+      e.recipient_phone = 'Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9'
     }
 
     setErrors(e)
@@ -217,7 +217,7 @@ export default function BookParcel() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!validate()) {
-      toast.error('Please fill in all compulsory fields (*)')
+      toast.error('Please fill in all required fields')
       return
     }
     matchMutation.mutate({ ...form, weight_kg: parseFloat(form.weight_kg) })
@@ -237,9 +237,6 @@ export default function BookParcel() {
         <p className="text-gray-400 text-sm mt-1">
           Intelligently matches your package or harvest with scheduled public buses already on route.
         </p>
-        <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-medium">
-          <span>*</span> All fields marked with <span className="font-bold underline">Compulsory</span> are strictly required
-        </div>
       </div>
 
       {/* Consignment Type Switcher */}
@@ -293,7 +290,7 @@ export default function BookParcel() {
 
         {/* Sender / Farmer name */}
         <Field
-          label={consignmentType === 'agri_produce' ? "Farmer / FPO Name" : "Sender Full Name"}
+          label={consignmentType === 'agri_produce' ? "Farmer / FPO Name" : "Sender Name"}
           required
           error={errors.customer_name}
         >
@@ -311,7 +308,7 @@ export default function BookParcel() {
 
         {/* Agricultural Commodity selector if agri mode */}
         {consignmentType === 'agri_produce' && (
-          <Field label="Agricultural Commodity" hint="Rural Harvest Classification">
+          <Field label="Agricultural Commodity">
             <select
               value={form.commodity}
               onChange={e => setForm(f => ({ ...f, commodity: e.target.value }))}
@@ -354,7 +351,6 @@ export default function BookParcel() {
             label="Destination / Market Drop"
             required
             error={errors.destination_stop_id}
-            hint={form.pickup_stop_id ? "Direct bus route stops" : "Select pickup first"}
           >
             <select
               value={form.destination_stop_id}
@@ -376,10 +372,10 @@ export default function BookParcel() {
         {/* Weight & Priority */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field
-            label="Consignment Weight (kg)"
+            label="Weight (kg)"
             required
             error={errors.weight_kg}
-            hint="0.5 kg to 80 kg limit"
+            hint="Hold limit: 80 kg"
           >
             <input
               type="number"
@@ -396,7 +392,7 @@ export default function BookParcel() {
             />
           </Field>
 
-          <Field label="Priority & SLA" hint="Transit Routing Profile">
+          <Field label="Priority & SLA">
             <select
               value={form.priority}
               onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
@@ -411,37 +407,23 @@ export default function BookParcel() {
 
         {/* Recipient phone */}
         <Field
-          label="Recipient Mobile Number (10 Digits)"
+          label="Recipient Mobile Number"
           required
           error={errors.recipient_phone}
-          hint={form.recipient_phone ? `${form.recipient_phone.replace(/\D/g, '').length}/10 digits` : "Compulsory for OTP Handshake"}
+          hint={form.recipient_phone ? `${form.recipient_phone.length}/10 digits` : "10 digits"}
         >
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 text-sm font-semibold">
-              +91
-            </div>
-            <input
-              type="tel"
-              maxLength={10}
-              value={form.recipient_phone}
-              onChange={e => {
-                const numOnly = e.target.value.replace(/\D/g, '').slice(0, 10)
-                setForm(f => ({ ...f, recipient_phone: numOnly }))
-                if (errors.recipient_phone) setErrors(err => ({ ...err, recipient_phone: null }))
-              }}
-              placeholder="10-digit mobile number (e.g. 9876543210)"
-              className="form-input pl-12 font-mono tracking-wider"
-            />
-            {form.recipient_phone && (
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs font-semibold">
-                {form.recipient_phone.length === 10 && /^[6-9]\d{9}$/.test(form.recipient_phone) ? (
-                  <span className="text-emerald-400 flex items-center gap-1">✓ Valid</span>
-                ) : (
-                  <span className="text-amber-400">{form.recipient_phone.length}/10</span>
-                )}
-              </div>
-            )}
-          </div>
+          <input
+            type="tel"
+            maxLength={10}
+            value={form.recipient_phone}
+            onChange={e => {
+              const numOnly = e.target.value.replace(/\D/g, '').slice(0, 10)
+              setForm(f => ({ ...f, recipient_phone: numOnly }))
+              if (errors.recipient_phone) setErrors(err => ({ ...err, recipient_phone: null }))
+            }}
+            placeholder="10-digit mobile number (e.g. 9876543210)"
+            className="form-input"
+          />
         </Field>
 
         <Button
@@ -477,19 +459,16 @@ function Field({ label, children, error, hint, required }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <label className="block text-sm font-medium text-gray-300 flex items-center gap-1.5">
+        <label className="block text-sm font-medium text-gray-300 flex items-center gap-1">
           <span>{label}</span>
-          {required && (
-            <span className="text-[10px] uppercase font-bold tracking-wider text-rose-400 bg-rose-500/15 border border-rose-500/30 px-1.5 py-0.5 rounded">
-              * Compulsory
-            </span>
-          )}
+          {required && <span className="text-rose-400 font-bold">*</span>}
         </label>
-        {hint && <span className="text-gray-400 text-xs font-normal">{hint}</span>}
+        {hint && <span className="text-gray-500 text-xs font-normal">{hint}</span>}
       </div>
       {children}
       {error && <p className="text-red-400 text-xs mt-1.5 flex items-center gap-1"><span>⚠️</span> {error}</p>}
     </div>
   )
 }
+
 
