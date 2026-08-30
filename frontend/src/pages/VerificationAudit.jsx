@@ -234,17 +234,25 @@ export default function VerificationAudit() {
 
   const handleVerifySubmit = (e) => {
     e.preventDefault()
-    if (!otpInput) {
-      toast.error('Please enter the 6-digit OTP code')
+    if (!receiverName.trim()) {
+      toast.error('⚠️ Receiver Name is required to complete delivery')
+      return
+    }
+    if (!otpInput || otpInput.trim().length !== 6) {
+      toast.error('⚠️ Please enter the complete 6-digit OTP code')
+      return
+    }
+    if (!hasSignature) {
+      toast.error('⚠️ Receiver Digital Signature is required — please sign in the box')
       return
     }
     const canvas = canvasRef.current
     const sigUrl = canvas ? canvas.toDataURL() : 'mock-signature-data'
     
     verifyMutation.mutate({
-      otp_code: otpInput,
+      otp_code: otpInput.trim(),
       signature_data_url: sigUrl,
-      receiver_name: receiverName || 'Verified Receiver',
+      receiver_name: receiverName.trim(),
     })
   }
 
@@ -275,6 +283,9 @@ export default function VerificationAudit() {
             onChange={(e) => {
               setSelectedParcelId(e.target.value)
               setCertificateData(null)
+              setReceiverName('')
+              setOtpInput('')
+              clearSignature()
             }}
             className="bg-surface border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono outline-none focus:border-emerald-500"
           >
