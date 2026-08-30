@@ -1,14 +1,17 @@
 import os
-from pydantic_settings import BaseSettings
+from functools import lru_cache
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    supabase_url: str = os.getenv("SUPABASE_URL", "")
-    supabase_anon_key: str = os.getenv("SUPABASE_ANON_KEY", "")
-    supabase_service_role_key: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-    osrm_url: str = os.getenv("OSRM_URL", "http://router.project-osrm.org")
-    admin_key: str = os.getenv("ADMIN_KEY", "smartbus-admin-secret-2024")
-    app_env: str = os.getenv("APP_ENV", "development")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    supabase_url: str = "https://txkozzqxdmugmftdzwjq.supabase.co"
+    supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
+    osrm_url: str = "http://router.project-osrm.org"
+    admin_key: str = "smartbus-admin-secret-2024"
+    app_env: str = "production"
 
     # Optimization weights (must sum to 1.0)
     weight_route_match: float = 0.40
@@ -29,11 +32,8 @@ class Settings(BaseSettings):
     max_candidates_returned: int = 3
     rate_limit_per_minute: int = 10
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-
 
 @lru_cache()
 def get_settings() -> Settings:
     return Settings()
+
