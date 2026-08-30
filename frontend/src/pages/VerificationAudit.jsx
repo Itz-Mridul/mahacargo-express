@@ -61,8 +61,8 @@ export default function VerificationAudit() {
     if (active) add(active)
 
     // 2. Server fetched parcels
-    if (Array.isArray(remoteParcels)) {
-      remoteParcels.forEach(add)
+    if (Array.isArray(rawParcels)) {
+      rawParcels.forEach(add)
     }
 
     // 3. Fallback defaults
