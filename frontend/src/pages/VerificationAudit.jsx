@@ -390,11 +390,19 @@ export default function VerificationAudit() {
 
           {/* Receiver Verification Form */}
           <div className="glass p-6 border-indigo-500/30 bg-gradient-to-b from-indigo-950/30 to-surface">
-            <h3 className="text-base font-bold text-white font-['Space_Grotesk'] mb-1">
-              Recipient Verification & Handover
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-base font-bold text-white font-['Space_Grotesk']">
+                Recipient Verification & Handover
+              </h3>
+              <StatusBadge status={chainData?.current_status || currentParcel?.status || 'pending'} />
+            </div>
+
             <p className="text-xs text-gray-400 mb-3">
-              Requires 6-digit receiver OTP and digital signature before status can transition to <span className="text-emerald-400 font-semibold">DELIVERED</span>.
+              {(chainData?.current_status === 'delivered' || currentParcel?.status === 'delivered')
+                ? '✅ This consignment has been verified and delivered to the recipient.'
+                : (chainData?.current_status === 'arrived' || currentParcel?.status === 'arrived')
+                ? '📍 Consignment arrived at destination depot. Enter OTP and sign below to complete handover.'
+                : '🚌 Consignment en route. Enter 6-digit OTP & digital signature below when ready to complete delivery.'}
             </p>
 
             {/* OTP Hint Pill */}
