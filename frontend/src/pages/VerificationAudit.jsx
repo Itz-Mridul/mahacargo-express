@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchAllParcels, fetchChainOfCustody, verifyDelivery, updateScanStep } from '../services/api'
 import { useAppStore } from '../store/appStore'
@@ -15,6 +16,9 @@ const DEFAULT_PARCELS_FALLBACK = [
 export default function VerificationAudit() {
   const queryClient = useQueryClient()
   const { bookingResult, activeAssignment } = useAppStore()
+  const [searchParams] = useSearchParams()
+  const trackingIdParam = searchParams.get('tracking_id')
+
   const [selectedParcelId, setSelectedParcelId] = useState('')
   const [otpInput, setOtpInput] = useState('')
   const [receiverName, setReceiverName] = useState('')
@@ -25,11 +29,21 @@ export default function VerificationAudit() {
   const [isDrawing, setIsDrawing] = useState(false)
   const [hasSignature, setHasSignature] = useState(false)
 
-  const { data: remoteParcels } = useQuery({
-    queryKey: ['parcels-admin'],
+  const { data: rawParcels, isLoading } = useQuery({
+    queryKey: ['parcels'],
     queryFn: fetchAllParcels,
-    refetchInterval: 10000,
   })
+
+  // Ensure parcels always has data for the UI
+  const parcels = rawParcels?.length > 0 ? rawParcels : DEFAULT_PARCELS_FALLBACK
+
+  // Pre-select parcel from URL param (simulating QR scan)
+  useEffect(() => {
+    if (trackingIdParam && parcels && !selectedParcelId) {
+      const match = parcels.find(p => p.tracking_id === trackingIdParam)
+      if (match) setSelectedParcelId(match.id)
+    }
+  }, [trackingIdParam, parcels, selectedParcelId])
 
   // Combine newly booked parcel, remote parcels, and fallback defaults
   const allParcels = (() => {

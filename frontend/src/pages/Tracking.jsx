@@ -198,6 +198,39 @@ export default function Tracking() {
 
         {/* Side panel */}
         <div className="space-y-4">
+          {/* Waybill / QR Code */}
+          {parcel?.status === 'pending' || parcel?.status === 'assigned' ? (
+            <div className="glass p-5 border-indigo-500/30 bg-indigo-500/5 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-white font-['Space_Grotesk'] mb-1">Digital Waybill</h3>
+                <p className="text-xs text-gray-400 max-w-[150px]">Present this QR code to the bus conductor to load your parcel.</p>
+              </div>
+              <div className="p-2 bg-white rounded-xl shadow-lg border border-white/20">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${parcel.tracking_id}`} 
+                  alt="QR Code" 
+                  width={80} 
+                  height={80} 
+                />
+              </div>
+            </div>
+          ) : parcel?.status === 'in_transit' ? (
+             <div className="glass p-5 border-emerald-500/30 bg-emerald-500/5 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-white font-['Space_Grotesk'] mb-1">Scan for Delivery</h3>
+                <p className="text-xs text-gray-400 max-w-[150px]">Receiver can scan this code to open the PoD verification portal.</p>
+              </div>
+              <div className="p-2 bg-white rounded-xl shadow-lg border border-white/20">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${window.location.origin}/verify?tracking_id=${parcel.tracking_id}`} 
+                  alt="QR Code" 
+                  width={80} 
+                  height={80} 
+                />
+              </div>
+            </div>
+          ) : null}
+
           {/* Assignment info */}
           {assignment && (
             <div className="glass p-5">

@@ -273,6 +273,7 @@ export function Navbar() {
     navLinks = [
       { to: '/dashboard', label: 'Admin Dashboard' },
       { to: '/optimizer', label: 'Network Optimizer' },
+      { to: '/scan', label: '📸 Scanner Portal' },
       { to: '/misinfo', label: '🛡️ Misinfo Shield' },
       { to: '/verify', label: 'Audit & PoD' },
     ]

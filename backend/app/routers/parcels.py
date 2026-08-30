@@ -33,10 +33,40 @@ async def list_parcels():
 @router.get("/{parcel_id}", response_model=ParcelOut)
 async def get_parcel(parcel_id: str):
     # Support both UUID and tracking ID
-    if parcel_id.startswith("SBP-"):
+    if parcel_id.startswith("SBP-") or parcel_id.startswith("PKG-") or parcel_id.startswith("FMP-"):
         parcel = await db.get_parcel_by_tracking(parcel_id)
     else:
         parcel = await db.get_parcel_by_id(parcel_id)
     if not parcel:
         raise HTTPException(status_code=404, detail="Parcel not found")
     return parcel
+
+from pydantic import BaseModel
+class ScanLoadRequest(BaseModel):
+    bus_id: str
+
+@router.post("/{parcel_id}/scan-load")
+async def scan_load_parcel(parcel_id: str, body: ScanLoadRequest):
+    parcel = await db.get_parcel_by_id(parcel_id)
+    if not parcel:
+        raise HTTPException(status_code=404, detail="Parcel not found")
+    if parcel.get("status") != "pending":
+        raise HTTPException(status_code=400, detail=f"Parcel is already {parcel.get('status')}")
+    
+    # 1. Deduct capacity from bus
+    try:
+        await db.decrement_bus_capacity(body.bus_id, float(parcel["weight_kg"]))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    # 2. Update parcel status
+    await db.update_parcel_status(parcel_id, "in_transit", bus_id=body.bus_id)
+    
+    # 3. Create assignment
+    await db.create_assignment({
+        "parcel_id": parcel_id,
+        "bus_id": body.bus_id,
+        "status": "active"
+    })
+    
+    return {"message": "Parcel successfully loaded onto bus"}

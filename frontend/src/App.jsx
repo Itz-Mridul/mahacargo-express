@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import { Navbar } from './components/Navbar'
-import { ProtectedRoute } from './components/ProtectedRoute'
+import { ProtectedRoute, RoleRoute } from './components/ProtectedRoute'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard'
 import NetworkOptimizer from './pages/NetworkOptimizer'
 import VerificationAudit from './pages/VerificationAudit'
 import MisinfoPortal from './pages/MisinfoPortal'
+import TransitScanner from './pages/TransitScanner'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -56,14 +57,18 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/book" element={<BookParcel />} />
             <Route path="/match" element={<SmartMatch />} />
-            <Route path="/optimizer" element={<NetworkOptimizer />} />
             <Route path="/verify" element={<VerificationAudit />} />
-            <Route path="/misinfo" element={<MisinfoPortal />} />
             <Route path="/track" element={<Tracking />} />
             <Route path="/track/:parcelId" element={<Tracking />} />
             <Route path="/tracking" element={<Tracking />} />
             <Route path="/tracking/:parcelId" element={<Tracking />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            
+            {/* Admin Only Routes */}
+            <Route path="/dashboard" element={<RoleRoute allowedRoles={['admin']}><Dashboard /></RoleRoute>} />
+            <Route path="/optimizer" element={<RoleRoute allowedRoles={['admin']}><NetworkOptimizer /></RoleRoute>} />
+            <Route path="/misinfo" element={<RoleRoute allowedRoles={['admin']}><MisinfoPortal /></RoleRoute>} />
+            <Route path="/scan" element={<RoleRoute allowedRoles={['admin']}><TransitScanner /></RoleRoute>} />
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
