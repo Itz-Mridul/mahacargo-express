@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchAllParcels, fetchChainOfCustody, verifyDelivery, updateScanStep } from '../services/api'
 import { useAppStore } from '../store/appStore'
+import { useAuthStore } from '../store/authStore'
 import { StatusBadge, DemoBadge, Button } from '../components/UI'
 import toast from 'react-hot-toast'
 
@@ -16,6 +17,7 @@ const DEFAULT_PARCELS_FALLBACK = [
 export default function VerificationAudit() {
   const queryClient = useQueryClient()
   const { bookingResult, activeAssignment } = useAppStore()
+  const { user } = useAuthStore()
   const [searchParams] = useSearchParams()
   const trackingIdParam = searchParams.get('tracking_id')
 
@@ -47,7 +49,7 @@ export default function VerificationAudit() {
 
   // Combine newly booked parcel, remote parcels, and fallback defaults
   const allParcels = (() => {
-    const list = []
+    let list = []
     const seen = new Set()
 
     const add = (p) => {
@@ -67,6 +69,17 @@ export default function VerificationAudit() {
 
     // 3. Fallback defaults
     DEFAULT_PARCELS_FALLBACK.forEach(add)
+
+    // Security & Privacy Filters:
+    // If a tracking ID was passed via QR code scan, ONLY show that exact parcel.
+    if (trackingIdParam) {
+      list = list.filter(p => p.tracking_id === trackingIdParam)
+    } 
+    // Otherwise, if not an admin, only show parcels belonging to this user
+    else if (user?.user_metadata?.role !== 'admin') {
+      const userName = user?.user_metadata?.name?.toLowerCase() || ''
+      list = list.filter(p => p.customer_name?.toLowerCase().includes(userName) || p.id === active?.id)
+    }
 
     return list
   })()
