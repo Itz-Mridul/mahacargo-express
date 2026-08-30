@@ -241,41 +241,50 @@ export default function TransitScanner() {
                 </div>
               </div>
 
-              {/* Bus Assignment */}
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-300">Assign to Active Bus</label>
-                {busesLoading ? (
-                  <div className="h-12 bg-white/5 animate-pulse rounded-xl" />
-                ) : (
-                  <select
-                    value={selectedBusId}
-                    onChange={(e) => setSelectedBusId(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-emerald-500"
-                  >
-                    <option value="" disabled>Select a bus...</option>
-                    {buses?.filter(b => b.status === 'active' || b.status === 'loading').map(bus => {
-                      const canFit = parseFloat(bus.available_capacity_kg) >= parseFloat(scannedParcel.weight_kg)
-                      return (
-                        <option key={bus.id} value={bus.id} disabled={!canFit}>
-                          {bus.bus_number} ({bus.available_capacity_kg}kg free) {canFit ? '' : ' - FULL'}
-                        </option>
-                      )
-                    })}
-                  </select>
-                )}
-              </div>
+              {/* Bus Assignment - Only show if pending or assigned */}
+              {scannedParcel.status === 'pending' || scannedParcel.status === 'assigned' ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2 text-gray-300">Assign to Active Bus</label>
+                    {busesLoading ? (
+                      <div className="h-12 bg-white/5 animate-pulse rounded-xl" />
+                    ) : (
+                      <select
+                        value={selectedBusId}
+                        onChange={(e) => setSelectedBusId(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-emerald-500"
+                      >
+                        <option value="" disabled>Select a bus...</option>
+                        {buses?.filter(b => b.status === 'active' || b.status === 'loading').map(bus => {
+                          const canFit = parseFloat(bus.available_capacity_kg) >= parseFloat(scannedParcel.weight_kg)
+                          return (
+                            <option key={bus.id} value={bus.id} disabled={!canFit}>
+                              {bus.bus_number} ({bus.available_capacity_kg}kg free) {canFit ? '' : ' - FULL'}
+                            </option>
+                          )
+                        })}
+                      </select>
+                    )}
+                  </div>
 
-              <button
-                onClick={handleAssign}
-                disabled={assignMutation.isPending || !selectedBusId}
-                className="w-full py-4 rounded-xl font-bold text-white transition-all shadow-lg"
-                style={{
-                  background: !selectedBusId ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #10b981, #059669)',
-                  opacity: assignMutation.isPending ? 0.7 : 1
-                }}
-              >
-                {assignMutation.isPending ? 'Loading Parcel...' : 'Confirm Load & Dispatch'}
-              </button>
+                  <button
+                    onClick={handleAssign}
+                    disabled={assignMutation.isPending || !selectedBusId}
+                    className="w-full py-4 rounded-xl font-bold text-white transition-all shadow-lg"
+                    style={{
+                      background: !selectedBusId ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #10b981, #059669)',
+                      opacity: assignMutation.isPending ? 0.7 : 1
+                    }}
+                  >
+                    {assignMutation.isPending ? 'Loading Parcel...' : 'Confirm Load & Dispatch'}
+                  </button>
+                </>
+              ) : (
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center">
+                  <p className="text-emerald-400 font-bold mb-1">✅ Action Not Required</p>
+                  <p className="text-sm text-gray-400">This parcel has already been loaded and is in the logistics network.</p>
+                </div>
+              )}
             </div>
           )}
         </div>

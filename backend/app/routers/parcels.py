@@ -50,7 +50,7 @@ async def scan_load_parcel(parcel_id: str, body: ScanLoadRequest):
     parcel = await db.get_parcel_by_id(parcel_id)
     if not parcel:
         raise HTTPException(status_code=404, detail="Parcel not found")
-    if parcel.get("status") != "pending":
+    if parcel.get("status") not in ["pending", "assigned"]:
         raise HTTPException(status_code=400, detail=f"Parcel is already {parcel.get('status')}")
     
     # 1. Deduct capacity from bus
